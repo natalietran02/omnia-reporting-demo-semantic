@@ -160,7 +160,9 @@
     }
 
     // ---- Power BI dataset query layer ----
-    async function executeDaxQueries(token, queries) {
+    // This tier only accepts one query per executeQueries call, so queries
+    // run as separate sequential requests rather than a single batched call.
+    async function executeDaxQuery(token, query) {
       var url = "https://api.powerbi.com/v1.0/myorg/groups/" + WORKSPACE_ID +
         "/datasets/" + DATASET_ID + "/executeQueries";
       var res = await fetch(url, {
@@ -170,7 +172,7 @@
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          queries: queries.map(function (q) { return { query: q }; }),
+          queries: [{ query: query }],
           serializerSettings: { includeNulls: true },
         }),
       });
@@ -179,7 +181,15 @@
         throw new Error("Power BI executeQueries failed (" + res.status + "): " + text);
       }
       var data = await res.json();
-      return data.results.map(function (r) { return r.tables[0].rows; });
+      return data.results[0].tables[0].rows;
+    }
+
+    async function executeDaxQueries(token, queries) {
+      var results = [];
+      for (var i = 0; i < queries.length; i++) {
+        results.push(await executeDaxQuery(token, queries[i]));
+      }
+      return results;
     }
 
     function parseMonth(v) {
