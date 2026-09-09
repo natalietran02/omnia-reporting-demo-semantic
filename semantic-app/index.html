@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Omnia Reporting — Semantic Demo</title>
+<style>
+  :root { color-scheme: light; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: #f4f4f2; color: #1a1a18;
+    display: flex; flex-direction: column;
+  }
+  header {
+    padding: 14px 24px; background: #14201c; color: #eef4f0;
+    display: flex; align-items: center; justify-content: space-between;
+    flex: 0 0 auto;
+  }
+  header h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .01em; }
+  header .sub { font-size: 12px; color: #9db3ab; margin-top: 2px; }
+  #signin-btn {
+    background: #2f7a63; color: #fff; border: none; border-radius: 6px;
+    padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  #signin-btn:hover { background: #35906f; }
+  #signin-btn:disabled { cursor: default; opacity: .85; }
+
+  #stage { flex: 1 1 auto; position: relative; overflow: auto; }
+  #placeholder {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px; color: #55605a; text-align: center; padding: 24px;
+  }
+  #placeholder.hidden { display: none; }
+  #error-box {
+    display: none; margin: 16px 24px; padding: 12px 16px; border-radius: 8px;
+    background: #fbe4e1; color: #7a2a20; font-size: 13px; white-space: pre-wrap;
+  }
+
+  #report { display: none; padding: 20px 24px 40px; max-width: 1080px; margin: 0 auto; }
+  #report.visible { display: block; }
+
+  .kpi-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .kpi-card {
+    flex: 1 1 200px; background: #fff; border-radius: 10px; padding: 16px 18px;
+    box-shadow: 0 1px 2px rgba(1,67,72,.08);
+  }
+  .kpi-card .label { font-size: 12px; color: #6b756f; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi-card .value { font-size: 26px; font-weight: 700; margin-top: 4px; color: #14201c; }
+  .kpi-card .delta { font-size: 12px; margin-top: 4px; }
+  .kpi-card .delta.up { color: #2f7a63; }
+  .kpi-card .delta.down { color: #c0392b; }
+  .kpi-card .sub { font-size: 11px; color: #8a938d; margin-top: 2px; }
+
+  .panel {
+    background: #fff; border-radius: 10px; padding: 18px 20px; margin-bottom: 20px;
+    box-shadow: 0 1px 2px rgba(1,67,72,.08);
+  }
+  .panel h2 { font-size: 14px; margin: 0 0 4px; color: #14201c; }
+  .panel .panel-sub { font-size: 12px; color: #6b756f; margin-bottom: 12px; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #434343; }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  svg.chart { width: 100%; height: auto; display: block; }
+  .axis-label { font-size: 10px; fill: #8a938d; }
+  .gridline { stroke: #eceeec; stroke-width: 1; }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Omnia Reporting — Utilisation &amp; Workforce</h1>
+      <div class="sub">Semantic model demo — queried directly, not embedded</div>
+    </div>
+    <button id="signin-btn">Sign in to view</button>
+  </header>
+  <div id="error-box"></div>
+  <div id="stage">
+    <div id="placeholder">
+      <div>Sign in with your EdgeRed account to load the report.</div>
+    </div>
+    <div id="report"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.20.0/lib/msal-browser.min.js"></script>
+  <script>
+    // ---- Fixed config for this demo ----
+    var TENANT_ID = "dc65b585-fcd8-46a4-a44e-e7e871a725be"; // edgered.com.au
+    var CLIENT_ID = "48ca88b2-1fff-427d-b801-8e4593ebafba"; // shared app registration (embed-app / semantic-app)
+    var WORKSPACE_ID = "bbbd2ec3-1085-4a2c-af8a-a0f82fa49f76";
+    var DATASET_ID = "8c11a7f7-0992-4591-b51a-50889e641617"; // "Omnia Reporting Demo" semantic model
+    var POWERBI_SCOPE = "https://analysis.windows.net/powerbi/api/Dataset.Read.All";
+
+    var ENTITY_COLORS = {
+      "Solace Advisory": "#2f7a63",
+      "Kestrel Group": "#c0392b",
+      "Northlight AI": "#3d7373",
+      "Fernway Data": "#e0a800",
+    };
+    var ENTITY_ORDER = ["Solace Advisory", "Kestrel Group", "Northlight AI", "Fernway Data"];
+
+    var Q_TREND =
+      "EVALUATE\n" +
+      "SUMMARIZECOLUMNS(\n" +
+      "    data_utilisation[month],\n" +
+      "    \"AvgUtilisation\", AVERAGE(data_utilisation[utilisation_pct]),\n" +
+      "    \"TotalFTE\", SUM(data_utilisation[fte]),\n" +
+      "    \"TotalBilled\", SUM(data_utilisation[billed_amount])\n" +
+      ")\n" +
+      "ORDER BY data_utilisation[month]";
+
+    var Q_ENTITY =
+      "EVALUATE\n" +
+      "SUMMARIZECOLUMNS(\n" +
+      "    data_utilisation[month],\n" +
+      "    data_utilisation[Omnia_Company],\n" +
+      "    \"AvgUtilisation\", AVERAGE(data_utilisation[utilisation_pct]),\n" +
+      "    \"TotalFTE\", SUM(data_utilisation[fte])\n" +
+      ")\n" +
+      "ORDER BY data_utilisation[month], data_utilisation[Omnia_Company]";
+
+    var msalApp = new msal.PublicClientApplication({
+      auth: {
+        clientId: CLIENT_ID,
+        authority: "https://login.microsoftonline.com/" + TENANT_ID,
+        redirectUri: window.location.origin + window.location.pathname,
+      },
+      cache: { cacheLocation: "sessionStorage" },
+    });
+    var msalReady = msalApp.initialize();
+
+    function showError(msg) {
+      var box = document.getElementById("error-box");
+      box.textContent = msg;
+      box.style.display = "block";
+    }
+
+    function setSignedInUi(account) {
+      var btn = document.getElementById("signin-btn");
+      btn.textContent = account ? "Signed in as " + account.username : "Sign in to view";
+      btn.disabled = !!account;
+    }
+
+    async function getToken(interactive) {
+      await msalReady;
+      var accounts = msalApp.getAllAccounts();
+      var request = { scopes: [POWERBI_SCOPE], account: accounts[0] };
+      try {
+        var result = await msalApp.acquireTokenSilent(request);
+        return result.accessToken;
+      } catch (e) {
+        if (!interactive) throw e;
+        var result = await msalApp.loginPopup({ scopes: [POWERBI_SCOPE] });
+        setSignedInUi(result.account);
+        var silent = await msalApp.acquireTokenSilent({ scopes: [POWERBI_SCOPE], account: result.account });
+        return silent.accessToken;
+      }
+    }
+
+    // ---- Power BI dataset query layer ----
+    async function executeDaxQueries(token, queries) {
+      var url = "https://api.powerbi.com/v1.0/myorg/groups/" + WORKSPACE_ID +
+        "/datasets/" + DATASET_ID + "/executeQueries";
+      var res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          queries: queries.map(function (q) { return { query: q }; }),
+          serializerSettings: { includeNulls: true },
+        }),
+      });
+      if (!res.ok) {
+        var text = await res.text();
+        throw new Error("Power BI executeQueries failed (" + res.status + "): " + text);
+      }
+      var data = await res.json();
+      return data.results.map(function (r) { return r.tables[0].rows; });
+    }
+
+    function parseMonth(v) {
+      var d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function monthLabel(d) {
+      return d.toLocaleDateString("en-AU", { month: "short", year: "2-digit" });
+    }
+
+    function fmtPct(v) { return v.toFixed(1) + "%"; }
+    function fmtNum(v) { return v.toLocaleString("en-AU", { maximumFractionDigits: 1 }); }
+    function fmtMoney(v) {
+      return "$" + Math.round(v).toLocaleString("en-AU");
+    }
+
+    // ---- SVG line chart helper ----
+    // series: [{ name, color, points: [{x: index, y: number|null}] }]
+    // xLabels: array of strings, one per x index
+    function renderLineChart(series, xLabels, opts) {
+      opts = opts || {};
+      var W = 760, H = 260, padL = 46, padR = 16, padT = 16, padB = 30;
+      var plotW = W - padL - padR, plotH = H - padT - padB;
+
+      var allY = [];
+      series.forEach(function (s) {
+        s.points.forEach(function (p) { if (p.y != null) allY.push(p.y); });
+      });
+      var yMin = opts.yMin != null ? opts.yMin : Math.min.apply(null, allY);
+      var yMax = opts.yMax != null ? opts.yMax : Math.max.apply(null, allY);
+      if (yMin === yMax) { yMin -= 1; yMax += 1; }
+      var yPad = (yMax - yMin) * 0.1;
+      yMin -= yPad; yMax += yPad;
+      if (opts.yMin === 0 && yMin < 0) yMin = 0;
+
+      var n = xLabels.length;
+      function xScale(i) { return padL + (n <= 1 ? 0 : (i / (n - 1)) * plotW); }
+      function yScale(v) { return padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH; }
+
+      var gridCount = 4;
+      var gridlines = "";
+      var yLabels = "";
+      for (var g = 0; g <= gridCount; g++) {
+        var val = yMin + (g / gridCount) * (yMax - yMin);
+        var y = yScale(val);
+        gridlines += '<line class="gridline" x1="' + padL + '" x2="' + (W - padR) + '" y1="' + y + '" y2="' + y + '"/>';
+        yLabels += '<text class="axis-label" x="' + (padL - 8) + '" y="' + (y + 3) + '" text-anchor="end">' +
+          (opts.yFmt ? opts.yFmt(val) : Math.round(val)) + '</text>';
+      }
+
+      var xTickEvery = Math.max(1, Math.round(n / 8));
+      var xLabelsSvg = "";
+      xLabels.forEach(function (lbl, i) {
+        if (i % xTickEvery !== 0 && i !== n - 1) return;
+        xLabelsSvg += '<text class="axis-label" x="' + xScale(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + lbl + '</text>';
+      });
+
+      var paths = series.map(function (s) {
+        var segs = [], cur = [];
+        s.points.forEach(function (p) {
+          if (p.y == null) {
+            if (cur.length) { segs.push(cur); cur = []; }
+          } else {
+            cur.push([xScale(p.x), yScale(p.y)]);
+          }
+        });
+        if (cur.length) segs.push(cur);
+        var d = segs.map(function (seg) {
+          return "M" + seg.map(function (pt) { return pt[0].toFixed(1) + "," + pt[1].toFixed(1); }).join("L");
+        }).join(" ");
+        return '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="2"/>';
+      }).join("");
+
+      return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '">' +
+        gridlines + yLabels + xLabelsSvg + paths +
+        '</svg>';
+    }
+
+    function legendHtml(series) {
+      return '<div class="legend">' + series.map(function (s) {
+        return '<span class="legend-item"><span class="legend-swatch" style="background:' + s.color + '"></span>' + s.name + '</span>';
+      }).join("") + '</div>';
+    }
+
+    // ---- Render ----
+    function renderReport(trendRows, entityRows) {
+      var trend = trendRows.map(function (r) {
+        return {
+          month: parseMonth(r["data_utilisation[month]"]),
+          avgUtil: r["[AvgUtilisation]"],
+          totalFte: r["[TotalFTE]"],
+          totalBilled: r["[TotalBilled]"],
+        };
+      }).filter(function (r) { return r.month; });
+
+      var entity = entityRows.map(function (r) {
+        return {
+          month: parseMonth(r["data_utilisation[month]"]),
+          company: r["data_utilisation[Omnia_Company]"],
+          avgUtil: r["[AvgUtilisation]"],
+          totalFte: r["[TotalFTE]"],
+        };
+      }).filter(function (r) { return r.month; });
+
+      var xLabels = trend.map(function (r) { return monthLabel(r.month); });
+
+      // KPI cards: latest month vs previous
+      var last = trend[trend.length - 1];
+      var prev = trend[trend.length - 2];
+      function delta(cur, prevV) {
+        if (prevV == null || prevV === 0) return "";
+        var d = cur - prevV;
+        var sign = d >= 0 ? "up" : "down";
+        var arrow = d >= 0 ? "▲" : "▼";
+        return '<div class="delta ' + sign + '">' + arrow + ' ' + Math.abs(d).toFixed(1) + ' vs prior month</div>';
+      }
+
+      var kpiHtml =
+        '<div class="kpi-row">' +
+          '<div class="kpi-card"><div class="label">Avg utilisation</div><div class="value">' + fmtPct(last.avgUtil) + '</div>' +
+            (prev ? delta(last.avgUtil, prev.avgUtil) : '') +
+            '<div class="sub">' + monthLabel(last.month) + '</div></div>' +
+          '<div class="kpi-card"><div class="label">Total FTE</div><div class="value">' + fmtNum(last.totalFte) + '</div>' +
+            (prev ? delta(last.totalFte, prev.totalFte) : '') +
+            '<div class="sub">' + monthLabel(last.month) + '</div></div>' +
+          '<div class="kpi-card"><div class="label">Total billed</div><div class="value">' + fmtMoney(last.totalBilled) + '</div>' +
+            (prev ? delta(last.totalBilled, prev.totalBilled) : '') +
+            '<div class="sub">' + monthLabel(last.month) + '</div></div>' +
+        '</div>';
+
+      var utilSeries = [{
+        name: "All entities",
+        color: "#14201c",
+        points: trend.map(function (r, i) { return { x: i, y: r.avgUtil }; }),
+      }];
+      var utilChartHtml =
+        '<div class="panel"><h2>Utilisation % — monthly trend</h2>' +
+        '<div class="panel-sub">Average utilisation across all billable staff, all entities</div>' +
+        renderLineChart(utilSeries, xLabels, { yFmt: function (v) { return Math.round(v) + "%"; } }) +
+        '</div>';
+
+      // Entity FTE chart — align each entity's series to the full month axis.
+      var entityByCompany = {};
+      entity.forEach(function (r) {
+        if (!entityByCompany[r.company]) entityByCompany[r.company] = {};
+        entityByCompany[r.company][r.month.getTime()] = r.totalFte;
+      });
+      var companies = ENTITY_ORDER.filter(function (c) { return entityByCompany[c]; });
+      var fteSeries = companies.map(function (c) {
+        return {
+          name: c,
+          color: ENTITY_COLORS[c] || "#888",
+          points: trend.map(function (r, i) {
+            var v = entityByCompany[c][r.month.getTime()];
+            return { x: i, y: v == null ? null : v };
+          }),
+        };
+      });
+      var fteChartHtml =
+        '<div class="panel"><h2>FTE by entity — monthly trend</h2>' +
+        '<div class="panel-sub">Billable full-time-equivalent headcount, per entity</div>' +
+        renderLineChart(fteSeries, xLabels, { yMin: 0 }) +
+        legendHtml(fteSeries) +
+        '</div>';
+
+      document.getElementById("report").innerHTML = kpiHtml + utilChartHtml + fteChartHtml;
+    }
+
+    async function loadReport(token) {
+      document.getElementById("placeholder").classList.add("hidden");
+      var report = document.getElementById("report");
+      report.classList.add("visible");
+      report.innerHTML = '<div class="panel">Loading data from the semantic model…</div>';
+      var results = await executeDaxQueries(token, [Q_TREND, Q_ENTITY]);
+      renderReport(results[0], results[1]);
+    }
+
+    async function signIn() {
+      try {
+        var token = await getToken(true);
+        await loadReport(token);
+      } catch (e) {
+        showError("Sign-in or data load failed: " + (e && e.message ? e.message : e));
+      }
+    }
+
+    document.getElementById("signin-btn").addEventListener("click", signIn);
+
+    (async function () {
+      await msalReady;
+      var accounts = msalApp.getAllAccounts();
+      if (accounts.length) {
+        setSignedInUi(accounts[0]);
+        try {
+          var token = await getToken(false);
+          await loadReport(token);
+        } catch (e) { /* fall through to manual sign-in button */ }
+      }
+    })();
+  </script>
+</body>
+</html>
