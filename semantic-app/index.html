@@ -49,10 +49,10 @@
   #app { display: none; }
   #app.visible { display: block; }
 
-  .tabs { display: flex; gap: 4px; padding: 0 24px; background: #0e1a15; flex: 0 0 auto; }
+  .tabs { display: flex; gap: 4px; padding: 0 24px; background: #0e1a15; flex: 0 0 auto; overflow-x: auto; }
   .tab-btn {
     background: transparent; border: none; color: #9db3ab; padding: 12px 16px; font-size: 13px;
-    font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent;
+    font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; flex: 0 0 auto; white-space: nowrap;
   }
   .tab-btn:hover { color: #eef4f0; }
   .tab-btn.active { color: #fff; border-bottom-color: #2f7a63; }
@@ -96,6 +96,9 @@
   .panel-header .chevron { opacity: .6; font-size: 11px; }
   .panel-body { padding: 14px 16px 18px; }
   .panel-note { font-size: 11px; font-style: italic; color: #6b756f; margin-bottom: 8px; }
+  .page-filter { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .page-filter label { font-size: 11px; color: #55655d; text-transform: uppercase; letter-spacing: .04em; }
+  .page-filter select { padding: 6px 10px; border-radius: 6px; border: 1px solid #c8d6cd; font-size: 13px; background: #fff; }
 
   .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #434343; }
@@ -155,10 +158,20 @@
         <button class="tab-btn active" data-page="summary">Summary</button>
         <button class="tab-btn" data-page="clients">Client Overview</button>
         <button class="tab-btn" data-page="revenue">Revenue Overview</button>
+        <button class="tab-btn" data-page="deals">Deals Overview</button>
+        <button class="tab-btn" data-page="accounts">Top Accounts</button>
+        <button class="tab-btn" data-page="employees">Employee Overview</button>
+        <button class="tab-btn" data-page="utilisation">Utilisation Overview</button>
+        <button class="tab-btn" data-page="certifications">Certifications</button>
       </div>
       <div id="page-summary" class="page active"></div>
       <div id="page-clients" class="page"></div>
       <div id="page-revenue" class="page"></div>
+      <div id="page-deals" class="page"></div>
+      <div id="page-accounts" class="page"></div>
+      <div id="page-employees" class="page"></div>
+      <div id="page-utilisation" class="page"></div>
+      <div id="page-certifications" class="page"></div>
       <div id="footnote"></div>
     </div>
   </div>
@@ -209,9 +222,70 @@
       "    data_hubspot_deals,\n" +
       "    \"Company\", data_hubspot_deals[Company],\n" +
       "    \"OmniaCompany\", data_hubspot_deals[Omnia_Company],\n" +
+      "    \"DealName\", data_hubspot_deals[Deal_Name],\n" +
       "    \"DealStage\", data_hubspot_deals[Deal_Stage],\n" +
+      "    \"Confidence\", data_hubspot_deals[Confidence],\n" +
       "    \"CloseDate\", data_hubspot_deals[Close_Date],\n" +
       "    \"Amount\", data_hubspot_deals[Amount]\n" +
+      ")";
+
+    // Row-level utilisation: KPIs need distinct-user and monthly-average math that
+    // isn't a simple SUM, so this pulls raw rows rather than pre-aggregating.
+    var Q_UTILISATION =
+      "EVALUATE\n" +
+      "SELECTCOLUMNS(\n" +
+      "    data_utilisation,\n" +
+      "    \"Month\", data_utilisation[Month],\n" +
+      "    \"Entity\", data_utilisation[Omnia_Company],\n" +
+      "    \"EmploymentBasis\", data_utilisation[employment_basis],\n" +
+      "    \"IsBillable\", data_utilisation[is_billable_staff],\n" +
+      "    \"FTE\", data_utilisation[FTE],\n" +
+      "    \"DailyRate\", data_utilisation[daily_rate],\n" +
+      "    \"InvoicedDays\", data_utilisation[invoiced_days],\n" +
+      "    \"LeaveDays\", data_utilisation[leave_days],\n" +
+      "    \"UtilisationPct\", data_utilisation[utilisation_pct],\n" +
+      "    \"UserId\", data_utilisation[userId]\n" +
+      ")";
+
+    // Roster rows are versioned per user (effective_from); we pick the latest row
+    // per user client-side to determine current headcount.
+    var Q_ROSTER =
+      "EVALUATE\n" +
+      "SELECTCOLUMNS(\n" +
+      "    data_employee_roster,\n" +
+      "    \"UserId\", data_employee_roster[userId],\n" +
+      "    \"Entity\", data_employee_roster[Omnia_Company],\n" +
+      "    \"RoleGroup\", data_employee_roster[role_group],\n" +
+      "    \"EmploymentType\", data_employee_roster[employment_type],\n" +
+      "    \"EffectiveFrom\", data_employee_roster[effective_from],\n" +
+      "    \"EmploymentStart\", data_employee_roster[employment_start_date],\n" +
+      "    \"TerminationDate\", data_employee_roster[termination_date],\n" +
+      "    \"Tenure\", data_employee_roster[tenure]\n" +
+      ")";
+
+    // This table has no OpCo/entity column, so the Certifications page ignores
+    // the OpCo filter entirely (there's nothing to filter it by).
+    var Q_CERTIFICATIONS =
+      "EVALUATE\n" +
+      "SELECTCOLUMNS(\n" +
+      "    data_certifications,\n" +
+      "    \"UserId\", data_certifications[AADUserId],\n" +
+      "    \"Title\", data_certifications[TrainingTitle],\n" +
+      "    \"Status\", data_certifications[ActivationStatus],\n" +
+      "    \"CompletionDate\", data_certifications[TrainingCompletionDate],\n" +
+      "    \"ExpirationDate\", data_certifications[ExpirationDate]\n" +
+      ")";
+
+    // Targets are keyed by Grade + FY, not by month, so the Utilisation Overview
+    // page can only show a flat (grade-averaged) target line, not a monthly one.
+    var Q_TARGET_DAILY_RATE =
+      "EVALUATE\n" +
+      "SELECTCOLUMNS(\n" +
+      "    data_target_daily_rate,\n" +
+      "    \"FY\", data_target_daily_rate[FY],\n" +
+      "    \"Grade\", data_target_daily_rate[Grade],\n" +
+      "    \"UtilisationTarget\", data_target_daily_rate[Utilisation_Target],\n" +
+      "    \"DailyRateTarget\", data_target_daily_rate[Daily_Rate_Target]\n" +
       ")";
 
     var msalApp = new msal.PublicClientApplication({
@@ -345,6 +419,30 @@
       var arr = [], cur = new Date(mn.getFullYear(), mn.getMonth(), 1);
       while (cur <= mx) { arr.push(new Date(cur)); cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); }
       return arr;
+    }
+    // Same idea as monthsRangeFromData but for a plain array of dates (no entity/opco
+    // dimension to filter by) — used by the Certifications page.
+    function monthsRangeSimple(dates) {
+      if (!dates.length) return [];
+      var mn = new Date(Math.min.apply(null, dates)), mx = new Date(Math.max.apply(null, dates));
+      var arr = [], cur = new Date(mn.getFullYear(), mn.getMonth(), 1);
+      var end = new Date(mx.getFullYear(), mx.getMonth(), 1);
+      while (cur <= end) { arr.push(new Date(cur)); cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); }
+      return arr;
+    }
+    function fyQuarterInfo(d) {
+      var fyMonthIdx = (d.getMonth() - 6 + 12) % 12;
+      return { startYear: fyStartYear(d), q: Math.floor(fyMonthIdx / 3) + 1 };
+    }
+    function fyQuarterRange(startYear, q) {
+      var offset = (q - 1) * 3;
+      var start = new Date(startYear, 6 + offset, 1);
+      var lastMonthFirst = new Date(startYear, 6 + offset + 2, 1);
+      var end = new Date(lastMonthFirst.getFullYear(), lastMonthFirst.getMonth() + 1, 0);
+      return { start: start, end: end };
+    }
+    function prevQuarter(startYear, q) {
+      return q === 1 ? { startYear: startYear - 1, q: 4 } : { startYear: startYear, q: q - 1 };
     }
 
     // Any Deal_Stage value containing "won"/"lost" is classified as such; everything
@@ -518,6 +616,37 @@
       return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '">' + rows + "</svg>";
     }
 
+    function renderLineChart(values, xLabels, opts) {
+      opts = opts || {};
+      var f = chartFrame(xLabels.length);
+      var allVals = values.filter(function (v) { return v != null; });
+      var yMax = (opts.yMax != null ? opts.yMax : Math.max.apply(null, allVals.length ? allVals : [1])) * 1.15;
+      var yMin = opts.yMin != null ? opts.yMin : 0;
+      var axes = gridAndAxes(f, yMin, yMax, opts.yFmt || function (v) { return Math.round(v); }, xLabels);
+      var stepX = f.n <= 1 ? 0 : f.plotW / (f.n - 1);
+      var points = values.map(function (v, i) {
+        if (v == null) return null;
+        return { x: f.padL + i * stepX, y: axes.yScale(v), v: v };
+      });
+      var segs = [], cur = [];
+      points.forEach(function (p) { if (p == null) { if (cur.length) { segs.push(cur); cur = []; } } else cur.push(p); });
+      if (cur.length) segs.push(cur);
+      var path = segs.map(function (seg) {
+        return "M" + seg.map(function (p) { return p.x.toFixed(1) + "," + p.y.toFixed(1); }).join("L");
+      }).join(" ");
+      var color = opts.lineColor || "#14201c";
+      var dots = points.map(function (p, i) {
+        if (p == null) return "";
+        var lines = [opts.yFmt ? opts.yFmt(p.v) : p.v];
+        return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="9" fill="transparent" ' +
+          tipAttrs(xLabels[i], lines, color) + '/>' +
+          '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3" fill="' + color + '"/>';
+      }).join("");
+      return '<svg class="chart" viewBox="0 0 ' + f.W + ' ' + f.H + '">' +
+        axes.gridlines + axes.yLabels + axes.xLabelsSvg +
+        '<path d="' + path + '" fill="none" stroke="' + color + '" stroke-width="2"/>' + dots + "</svg>";
+    }
+
     function polarToCartesian(cx, cy, r, angleDeg) {
       var a = (angleDeg - 90) * Math.PI / 180;
       return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
@@ -528,25 +657,27 @@
       var largeArc = endAngle - startAngle <= 180 ? "0" : "1";
       return ["M", cx, cy, "L", start.x, start.y, "A", r, r, 0, largeArc, 0, end.x, end.y, "Z"].join(" ");
     }
-    function renderPieChart(items, colors) {
+    function renderPieChart(items, colors, opts) {
+      opts = opts || {};
+      var valueFmt = opts.valueFmt || fmtMoneyAbbrev;
       var total = items.reduce(function (s, it) { return s + it.value; }, 0) || 1;
       var cx = 110, cy = 110, r = 100, angle = 0, slices = "";
       if (items.length === 1) {
         slices = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + colors[0] + '" ' +
-          tipAttrs(items[0].label, [fmtMoneyAbbrev(items[0].value) + " · 100%"], colors[0]) + '/>';
+          tipAttrs(items[0].label, [valueFmt(items[0].value) + " · 100%"], colors[0]) + '/>';
       } else {
         items.forEach(function (it, i) {
           var sweep = (it.value / total) * 360;
           var pct = (it.value / total * 100).toFixed(0);
           slices += '<path d="' + describeSlice(cx, cy, r, angle, angle + sweep) + '" fill="' + colors[i % colors.length] + '" ' +
-            tipAttrs(it.label, [fmtMoneyAbbrev(it.value) + " · " + pct + "%"], colors[i % colors.length]) + '/>';
+            tipAttrs(it.label, [valueFmt(it.value) + " · " + pct + "%"], colors[i % colors.length]) + '/>';
           angle += sweep;
         });
       }
       var legend = items.map(function (it, i) {
         var pct = (it.value / total * 100).toFixed(2);
         return '<div class="legend-item"><span class="legend-swatch" style="background:' + colors[i % colors.length] + '"></span>' +
-          escapeHtml(it.label) + " — " + fmtMoneyAbbrev(it.value) + " (" + pct + "%)</div>";
+          escapeHtml(it.label) + " — " + valueFmt(it.value) + " (" + pct + "%)</div>";
       }).join("");
       return '<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">' +
         '<svg viewBox="0 0 220 220" style="width:200px;height:200px;flex:0 0 auto;">' + slices + '</svg>' +
@@ -555,7 +686,7 @@
     }
 
     // ---- App state ----
-    var RAW = { revenue: [], projects: [], deals: [] };
+    var RAW = { revenue: [], projects: [], deals: [], utilisation: [], roster: [], certifications: [], targetRates: [] };
 
     function parseRevenueRows(rows) {
       return rows.map(function (r) {
@@ -586,12 +717,65 @@
         return {
           company: r["[Company]"],
           entity: r["[OmniaCompany]"],
+          dealName: r["[DealName]"] || r["[Company]"] || "Deal",
+          confidence: r["[Confidence]"] || "Unspecified",
           stage: r["[DealStage]"],
           bucket: stageBucket(r["[DealStage]"]),
           closeDate: closeDate,
           amount: r["[Amount]"] || 0,
         };
       }).filter(function (r) { return r.closeDate; });
+    }
+    function parseUtilisationRows(rows) {
+      return rows.map(function (r) {
+        return {
+          month: parseDate(r["[Month]"]),
+          entity: r["[Entity]"],
+          employmentBasis: r["[EmploymentBasis]"] || "Unspecified",
+          isBillable: !!r["[IsBillable]"],
+          fte: r["[FTE]"] || 0,
+          dailyRate: r["[DailyRate]"],
+          invoicedDays: r["[InvoicedDays]"] || 0,
+          leaveDays: r["[LeaveDays]"] || 0,
+          utilisationPct: r["[UtilisationPct]"],
+          userId: r["[UserId]"],
+        };
+      }).filter(function (r) { return r.month; });
+    }
+    function parseRosterRows(rows) {
+      return rows.map(function (r) {
+        return {
+          userId: r["[UserId]"],
+          entity: r["[Entity]"],
+          roleGroup: r["[RoleGroup]"] || "Unspecified",
+          employmentType: r["[EmploymentType]"] || "Unspecified",
+          effectiveFrom: parseDate(r["[EffectiveFrom]"]),
+          employmentStart: parseDate(r["[EmploymentStart]"]),
+          terminationDate: parseDate(r["[TerminationDate]"]),
+          tenure: r["[Tenure]"],
+        };
+      });
+    }
+    function parseCertRows(rows) {
+      return rows.map(function (r) {
+        return {
+          userId: r["[UserId]"],
+          title: r["[Title]"] || "Unspecified",
+          status: r["[Status]"],
+          completionDate: parseDate(r["[CompletionDate]"]),
+          expirationDate: parseDate(r["[ExpirationDate]"]),
+        };
+      });
+    }
+    function parseTargetRateRows(rows) {
+      return rows.map(function (r) {
+        return {
+          fy: r["[FY]"],
+          grade: r["[Grade]"],
+          utilisationTarget: r["[UtilisationTarget]"],
+          dailyRateTarget: r["[DailyRateTarget]"],
+        };
+      });
     }
 
     function computeFYOptions() {
@@ -610,6 +794,20 @@
       var months = RAW.revenue.filter(function (r) { return r.revenue != null; }).map(function (r) { return r.month; });
       if (!months.length) return new Date();
       return new Date(Math.max.apply(null, months));
+    }
+    // Roster rows are versioned per user (effective_from); take the most recent
+    // row per user, then treat "currently employed" as no termination date.
+    function computeActiveRoster(opco) {
+      var latestByUser = {};
+      RAW.roster.forEach(function (r) {
+        if (!matches(r.entity, opco)) return;
+        var cur = latestByUser[r.userId];
+        if (!cur || (r.effectiveFrom && (!cur.effectiveFrom || r.effectiveFrom > cur.effectiveFrom))) {
+          latestByUser[r.userId] = r;
+        }
+      });
+      return Object.keys(latestByUser).map(function (u) { return latestByUser[u]; })
+        .filter(function (r) { return !r.terminationDate; });
     }
 
     function populateFilters() {
@@ -932,6 +1130,352 @@
         '<div class="panels-grid">' + revenuePanel + streamPanel + "</div>";
     }
 
+    // ---- Deals Overview page ----
+    // No Financial Year selector in the reference report — its KPIs are inherently
+    // "current quarter" snapshots, so this ignores the shared FY dropdown and uses
+    // the real current date instead. Only OpCo applies.
+    function renderDealsPage(opco) {
+      var today = new Date();
+      var cur = fyQuarterInfo(today);
+      var prev = prevQuarter(cur.startYear, cur.q);
+      var curRange = fyQuarterRange(cur.startYear, cur.q);
+      var prevRange = fyQuarterRange(prev.startYear, prev.q);
+      var fyStartDate = new Date(cur.startYear, 6, 1);
+
+      var dealsInScope = RAW.deals.filter(function (d) { return matches(d.entity, opco); });
+      function wonIn(range) { return dealsInScope.filter(function (d) { return d.bucket === "won" && d.closeDate >= range.start && d.closeDate <= range.end; }); }
+      function lostIn(range) { return dealsInScope.filter(function (d) { return d.bucket === "lost" && d.closeDate >= range.start && d.closeDate <= range.end; }); }
+
+      var wonCur = wonIn(curRange), wonPrev = wonIn(prevRange);
+      var lostCur = lostIn(curRange), lostPrev = lostIn(prevRange);
+
+      var wonAmountCur = wonCur.reduce(function (s, d) { return s + d.amount; }, 0);
+      var wonAmountPrev = wonPrev.reduce(function (s, d) { return s + d.amount; }, 0);
+      var wonAmountDeltaPct = wonAmountPrev ? ((wonAmountCur - wonAmountPrev) / wonAmountPrev) * 100 : null;
+
+      var convCur = (wonCur.length + lostCur.length) ? (wonCur.length / (wonCur.length + lostCur.length)) * 100 : null;
+      var convPrev = (wonPrev.length + lostPrev.length) ? (wonPrev.length / (wonPrev.length + lostPrev.length)) * 100 : null;
+      var convDeltaPP = (convCur != null && convPrev != null) ? (convCur - convPrev) : null;
+
+      var avgDealCur = wonCur.length ? wonAmountCur / wonCur.length : 0;
+      var avgDealPrev = wonPrev.length ? wonAmountPrev / wonPrev.length : 0;
+      var avgDealDeltaPct = avgDealPrev ? ((avgDealCur - avgDealPrev) / avgDealPrev) * 100 : null;
+
+      var openDeals = dealsInScope.filter(function (d) { return d.bucket === "open" && d.closeDate >= fyStartDate; });
+      var openPipeline = openDeals.reduce(function (s, d) { return s + d.amount; }, 0);
+
+      var kpiHtml =
+        kpiCard("Won Amount - Current FQ", fmtMoneyAbbrev(wonAmountCur), { deltaPct: wonAmountDeltaPct }) +
+        kpiCard("Conversion Rate - Current FQ", convCur == null ? "—" : Math.round(convCur) + "%",
+          { subText: convDeltaPP != null ? (convDeltaPP >= 0 ? "+" : "") + convDeltaPP.toFixed(1) + " pp vs Prev Q" : null }) +
+        kpiCard("Avg. Deal Size Won - Current FQ", fmtMoneyAbbrev(avgDealCur), { deltaPct: avgDealDeltaPct }) +
+        kpiCard("Open Pipeline", fmtMoneyAbbrev(openPipeline));
+
+      var wonAll = dealsInScope.filter(function (d) { return d.bucket === "won" && d.closeDate >= fyStartDate; });
+      var topDeals = topN(aggregateBy(wonAll, function (d) { return d.dealName; }, function (d) { return d.amount; }), 10);
+
+      var stageAll = dealsInScope.filter(function (d) { return d.closeDate >= fyStartDate; });
+      var stageLabelMap = { won: "Closed Won", lost: "Closed Lost", open: "Open/In Progress" };
+      var stageTotals = aggregateBy(stageAll, function (d) { return stageLabelMap[d.bucket]; }, function (d) { return d.amount; });
+      var stageItems = ["Closed Won", "Closed Lost", "Open/In Progress"].filter(function (k) { return stageTotals[k] != null; })
+        .map(function (k) { return { label: k, value: stageTotals[k] }; });
+
+      var confItems = topN(aggregateBy(openDeals, function (d) { return d.confidence; }, function (d) { return d.amount; }), 10);
+
+      var topDealsPanel =
+        '<div class="panel"><div class="panel-header">Top Sales Intake by Amount<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        '<div class="panel-note">*Includes all sales intake from the current FY onwards. Showing top 10.</div>' +
+        (topDeals.length ? renderHBarChart(topDeals, { valueFmt: fmtMoneyAbbrev, barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      var stagePanel =
+        '<div class="panel"><div class="panel-header">Deal Amount by Stage<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        '<div class="panel-note">*Includes all deals from the current FY onwards.</div>' +
+        (stageItems.length ? renderHBarChart(stageItems, { valueFmt: fmtMoneyAbbrev, barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      var confPanel =
+        '<div class="panel"><div class="panel-header">Deals in Pipeline by Confidence<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        '<div class="panel-note">*Includes all deals in pipeline from the current FY onwards.</div>' +
+        (confItems.length ? renderHBarChart(confItems, { valueFmt: fmtMoneyAbbrev, barColor: "#8fc7a8" }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      document.getElementById("page-deals").innerHTML =
+        '<div class="kpi-row">' + kpiHtml + "</div>" +
+        '<div class="client-panels">' + topDealsPanel + '<div class="panel-stack">' + stagePanel + confPanel + "</div></div>";
+    }
+
+    // ---- Top Accounts Overview page ----
+    function renderTopAccountsPage(startYear, opco) {
+      var months = fyMonths(startYear);
+      var fyKeys = {}; months.forEach(function (d) { fyKeys[monthKey(d)] = true; });
+      var fyStartDate = new Date(startYear, 6, 1);
+
+      var openDeals = RAW.deals.filter(function (d) { return matches(d.entity, opco) && d.bucket === "open" && d.closeDate >= fyStartDate; });
+      var topPipelineDeals = topN(aggregateBy(openDeals, function (d) { return d.dealName; }, function (d) { return d.amount; }), 10);
+
+      var scopedProjectRows = RAW.projects.filter(function (r) { return matches(r.entity, opco) && fyKeys[monthKey(r.month)]; });
+      var topClientsByRevenue = topN(aggregateBy(scopedProjectRows, function (r) { return r.client; }, function (r) { return r.revenue; }), 10);
+
+      var projectSets = {};
+      scopedProjectRows.forEach(function (r) {
+        if (!projectSets[r.client]) projectSets[r.client] = {};
+        projectSets[r.client][r.project] = true;
+      });
+      var byClientProjects = {};
+      Object.keys(projectSets).forEach(function (c) { byClientProjects[c] = Object.keys(projectSets[c]).length; });
+      var topClientsByProjects = topN(byClientProjects, 10);
+
+      var pipelinePanel =
+        '<div class="panel"><div class="panel-header">Top 10 Deals in Pipeline<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (topPipelineDeals.length ? renderHBarChart(topPipelineDeals, { valueFmt: fmtMoneyAbbrev, barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      var revenuePiePanel =
+        '<div class="panel"><div class="panel-header">Top 10 Accounts by Revenue<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (topClientsByRevenue.length ? renderPieChart(topClientsByRevenue, PIE_COLORS) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      var projectsPiePanel =
+        '<div class="panel"><div class="panel-header">Top 10 Accounts by Projects<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (topClientsByProjects.length ? renderPieChart(topClientsByProjects, PIE_COLORS, { valueFmt: fmtInt }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      document.getElementById("page-accounts").innerHTML =
+        '<div class="client-panels">' + pipelinePanel + '<div class="panel-stack">' + revenuePiePanel + projectsPiePanel + "</div></div>";
+    }
+
+    // ---- Employee Overview page ----
+    function renderEmployeePage(startYear, opco) {
+      var active = computeActiveRoster(opco);
+      var totalEmployees = active.length;
+      var contractors = active.filter(function (r) { return String(r.employmentType || "").toLowerCase().indexOf("contractor") !== -1; }).length;
+      var permanent = totalEmployees - contractors;
+
+      var elapsed = monthsElapsedInFY(startYear, latestRevenueMonth());
+      var revenueScope = sumRevenueWindow(startYear, opco, elapsed);
+      var revenuePerHeadcount = totalEmployees ? revenueScope / totalEmployees : 0;
+
+      var tenures = active.map(function (r) { return r.tenure; }).filter(function (t) { return t != null; });
+      var avgTenure = tenures.length ? tenures.reduce(function (s, t) { return s + t; }, 0) / tenures.length : 0;
+
+      var comboCard =
+        '<div class="kpi-card kpi-card--combo">' +
+        '<div class="combo-item"><div class="label">Permanent</div><div class="value">' + fmtInt(permanent) + '</div></div>' +
+        '<div class="combo-divider"></div>' +
+        '<div class="combo-item"><div class="label">Contractor</div><div class="value">' + fmtInt(contractors) + '</div></div>' +
+        "</div>";
+
+      var kpiHtml =
+        kpiCard("Total Employees", fmtInt(totalEmployees)) +
+        comboCard +
+        kpiCard("Revenue per Headcount", fmtMoneyAbbrev(revenuePerHeadcount)) +
+        kpiCard("Avg. Tenure (Years)", avgTenure.toFixed(2));
+
+      var typeItems = topN(aggregateBy(active, function (r) { return r.employmentType; }, function () { return 1; }), 10);
+      var roleItems = topN(aggregateBy(active, function (r) { return r.roleGroup; }, function () { return 1; }), 10);
+
+      var months = fyMonths(startYear);
+      var xLabels = months.map(monthLabel);
+      var hiresByMonth = {};
+      RAW.roster.forEach(function (r) {
+        if (!matches(r.entity, opco) || !r.employmentStart) return;
+        var k = monthKey(r.employmentStart);
+        hiresByMonth[k] = (hiresByMonth[k] || 0) + 1;
+      });
+      var hireValues = months.map(function (d) { return hiresByMonth[monthKey(d)] || 0; });
+
+      var typePanel =
+        '<div class="panel"><div class="panel-header">Employees by Employment Type<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (typeItems.length ? renderPieChart(typeItems, PIE_COLORS, { valueFmt: fmtInt }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      var rolePanel =
+        '<div class="panel"><div class="panel-header">Employees by Role<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (roleItems.length ? renderPieChart(roleItems, PIE_COLORS, { valueFmt: fmtInt }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      var hiresPanel =
+        '<div class="panel"><div class="panel-header">New Hires by Month<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        renderBarChart(hireValues, xLabels, { barColor: "#14201c", yFmt: function (v) { return Math.round(v); } }) +
+        "</div></div>";
+
+      document.getElementById("page-employees").innerHTML =
+        '<div class="kpi-row">' + kpiHtml + "</div>" +
+        '<div class="client-panels"><div class="panel-stack">' + typePanel + rolePanel + "</div>" + hiresPanel + "</div>";
+    }
+
+    // ---- Utilisation Overview page ----
+    // Employment Type is a page-local filter (not part of the shared header bar,
+    // since it only applies here) — its selection is kept in this module-level
+    // variable so it survives the innerHTML rebuild on every re-render.
+    var UTIL_EMPLOYMENT_FILTER = "All";
+    function renderUtilisationPage(startYear, opco) {
+      var months = fyMonths(startYear);
+      var elapsed = monthsElapsedInFY(startYear, latestRevenueMonth());
+      var scopeMonths = months.slice(0, elapsed);
+      var scopeKeys = {}; scopeMonths.forEach(function (d) { scopeKeys[monthKey(d)] = true; });
+
+      var basisSet = {};
+      RAW.utilisation.forEach(function (r) { if (matches(r.entity, opco)) basisSet[r.employmentBasis] = true; });
+      var basisList = Object.keys(basisSet).sort();
+
+      var rows = RAW.utilisation.filter(function (r) {
+        return matches(r.entity, opco) && r.isBillable && scopeKeys[monthKey(r.month)] &&
+          (UTIL_EMPLOYMENT_FILTER === "All" || r.employmentBasis === UTIL_EMPLOYMENT_FILTER);
+      });
+
+      var avgUtilisation = rows.length ? rows.reduce(function (s, r) { return s + (r.utilisationPct || 0); }, 0) / rows.length : 0;
+
+      var fteByMonth = {};
+      rows.forEach(function (r) { var k = monthKey(r.month); fteByMonth[k] = (fteByMonth[k] || 0) + (r.fte || 0); });
+      var monthsWithData = Object.keys(fteByMonth).length || 1;
+      var billableFTEs = Object.keys(fteByMonth).reduce(function (s, k) { return s + fteByMonth[k]; }, 0) / monthsWithData;
+
+      var rates = rows.map(function (r) { return r.dailyRate; }).filter(function (v) { return v != null && v > 0; });
+      var avgDailyRate = rates.length ? rates.reduce(function (s, v) { return s + v; }, 0) / rates.length : 0;
+
+      var totalInvoicedDays = rows.reduce(function (s, r) { return s + (r.invoicedDays || 0); }, 0);
+      var distinctUsers = {}; rows.forEach(function (r) { if (r.userId) distinctUsers[r.userId] = true; });
+      var userCount = Object.keys(distinctUsers).length;
+      var avgBilledDays = userCount ? totalInvoicedDays / userCount : 0;
+
+      var kpiHtml =
+        kpiCard("Avg. Utilisation - Current FY", avgUtilisation.toFixed(1) + "%") +
+        kpiCard("Billable FTEs", billableFTEs.toFixed(2)) +
+        kpiCard("Overall Avg. Daily Rate", fmtMoneyAbbrev(avgDailyRate)) +
+        kpiCard("Avg. Billed Days per Employee", avgBilledDays.toFixed(2));
+
+      var utilByMonth = {};
+      rows.forEach(function (r) {
+        var k = monthKey(r.month);
+        if (!utilByMonth[k]) utilByMonth[k] = { sum: 0, n: 0 };
+        utilByMonth[k].sum += r.utilisationPct || 0;
+        utilByMonth[k].n += 1;
+      });
+      var xLabels = months.map(monthLabel);
+      var utilValues = months.map(function (d) { var e = utilByMonth[monthKey(d)]; return e ? (e.sum / e.n) : null; });
+
+      // Targets are keyed by Grade + FY, not month, so this is a flat (grade-averaged)
+      // reference line rather than a true monthly target trend.
+      var fyLbl = fyLabel(startYear);
+      var targetsForFY = RAW.targetRates.filter(function (t) { return t.fy === fyLbl && t.utilisationTarget != null; });
+      var flatTarget = targetsForFY.length ? targetsForFY.reduce(function (s, t) { return s + t.utilisationTarget; }, 0) / targetsForFY.length : null;
+      var targetValues = months.map(function () { return flatTarget; });
+
+      var leaveByMonth = {};
+      RAW.utilisation.forEach(function (r) {
+        if (!matches(r.entity, opco) || (UTIL_EMPLOYMENT_FILTER !== "All" && r.employmentBasis !== UTIL_EMPLOYMENT_FILTER)) return;
+        if (!scopeKeys[monthKey(r.month)]) return;
+        var k = monthKey(r.month);
+        leaveByMonth[k] = (leaveByMonth[k] || 0) + (r.leaveDays || 0);
+      });
+      var leaveValues = months.map(function (d) { return leaveByMonth[monthKey(d)] || 0; });
+
+      var filterHtml =
+        '<div class="page-filter"><label>Employment Type</label><select id="util-employment-select">' +
+        '<option value="All"' + (UTIL_EMPLOYMENT_FILTER === "All" ? " selected" : "") + '>All</option>' +
+        basisList.map(function (b) { return '<option value="' + escapeHtml(b) + '"' + (UTIL_EMPLOYMENT_FILTER === b ? " selected" : "") + '>' + escapeHtml(b) + '</option>'; }).join("") +
+        "</select></div>";
+
+      var utilPanel =
+        '<div class="panel"><div class="panel-header">Billable Utilisation by Month<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        renderBarWithTarget(utilValues, targetValues, xLabels, {
+          yFmt: function (v) { return Math.round(v) + "%"; }, barColor: "#14201c", targetColor: "#bfe0cd",
+          seriesLabel: "Utilisation", targetLabel: "Utilisation Target",
+        }) +
+        '<div class="legend">' +
+        '<span class="legend-item"><span class="legend-swatch" style="background:#14201c"></span>Billable Utilisation</span>' +
+        (flatTarget != null ? '<span class="legend-item"><span class="legend-dash" style="background:#bfe0cd"></span>Utilisation Target (avg across grades)</span>' : "") +
+        "</div></div></div>";
+
+      var leavePanel =
+        '<div class="panel"><div class="panel-header">Leave Days by Month<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        renderLineChart(leaveValues, xLabels, { lineColor: "#14201c" }) +
+        "</div></div>";
+
+      document.getElementById("page-utilisation").innerHTML =
+        filterHtml + '<div class="kpi-row">' + kpiHtml + "</div>" +
+        '<div class="panels-grid">' + utilPanel + leavePanel + "</div>";
+
+      var sel = document.getElementById("util-employment-select");
+      sel.addEventListener("change", function () {
+        UTIL_EMPLOYMENT_FILTER = sel.value;
+        renderUtilisationPage(effectiveFYStartYear(), currentOpco());
+      });
+    }
+
+    // ---- Microsoft Certifications page ----
+    // data_certifications has no OpCo/entity column, so this page ignores the
+    // shared header filters entirely — there's nothing to filter it by.
+    function renderCertificationsPage() {
+      var today = new Date();
+      var activeCerts = RAW.certifications.filter(function (c) { return !c.expirationDate || c.expirationDate >= today; });
+
+      var typeSet = {}; activeCerts.forEach(function (c) { typeSet[c.title] = true; });
+      var activeTypes = Object.keys(typeSet).length;
+
+      var userSet = {}; activeCerts.forEach(function (c) { if (c.userId) userSet[c.userId] = true; });
+      var activeEmployees = Object.keys(userSet).length;
+
+      var byTitle = {};
+      activeCerts.forEach(function (c) {
+        if (!byTitle[c.title]) byTitle[c.title] = {};
+        if (c.userId) byTitle[c.title][c.userId] = true;
+      });
+      var titleItems = Object.keys(byTitle).map(function (t) { return { label: t, value: Object.keys(byTitle[t]).length }; })
+        .sort(function (a, b) { return b.value - a.value; }).slice(0, 15);
+
+      var completionMonths = monthsRangeSimple(RAW.certifications.map(function (c) { return c.completionDate; }).filter(Boolean));
+      var completedByMonth = {};
+      RAW.certifications.forEach(function (c) { if (c.completionDate) { var k = monthKey(c.completionDate); completedByMonth[k] = (completedByMonth[k] || 0) + 1; } });
+      var completedLabels = completionMonths.map(monthLabel);
+      var completedValues = completionMonths.map(function (d) { return completedByMonth[monthKey(d)] || 0; });
+
+      var expiryMonths = monthsRangeSimple(RAW.certifications.map(function (c) { return c.expirationDate; }).filter(Boolean));
+      var expiringByMonth = {};
+      RAW.certifications.forEach(function (c) { if (c.expirationDate) { var k = monthKey(c.expirationDate); expiringByMonth[k] = (expiringByMonth[k] || 0) + 1; } });
+      var expiryLabels = expiryMonths.map(monthLabel);
+      var expiryValues = expiryMonths.map(function (d) { return expiringByMonth[monthKey(d)] || 0; });
+
+      var kpiHtml =
+        kpiCard("Active Certification Types", fmtInt(activeTypes)) +
+        kpiCard("Active Certified Employees", fmtInt(activeEmployees));
+
+      var typesPanel =
+        '<div class="panel"><div class="panel-header">Active Certification by Types<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (titleItems.length ? renderHBarChart(titleItems, { valueFmt: fmtInt, barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      var completedPanel =
+        '<div class="panel"><div class="panel-header">Certifications Completed by Month<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (completedValues.length ? renderBarChart(completedValues, completedLabels, { barColor: "#14201c", yFmt: function (v) { return Math.round(v); } }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      var expiringPanel =
+        '<div class="panel"><div class="panel-header">Expiring Certifications by Month<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (expiryValues.length ? renderBarChart(expiryValues, expiryLabels, { barColor: "#14201c", yFmt: function (v) { return Math.round(v); } }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      document.getElementById("page-certifications").innerHTML =
+        '<div class="kpi-row">' + kpiHtml + "</div>" +
+        '<div class="client-panels"><div class="panel-stack">' + typesPanel + "</div><div class=\"panel-stack\">" + completedPanel + expiringPanel + "</div></div>";
+    }
+
     function render() {
       var opco = currentOpco();
       var startYear = effectiveFYStartYear();
@@ -939,6 +1483,11 @@
       renderSummaryPage(startYear, opco);
       renderClientsPage(startYear, opco, allFY);
       renderRevenuePage(startYear, opco);
+      renderDealsPage(opco);
+      renderTopAccountsPage(startYear, opco);
+      renderEmployeePage(startYear, opco);
+      renderUtilisationPage(startYear, opco);
+      renderCertificationsPage();
 
       var earliestMonth = RAW.revenue.reduce(function (min, r) { return (!min || r.month < min) ? r.month : min; }, null);
       var latestMonth = latestRevenueMonth();
@@ -961,10 +1510,16 @@
       var app = document.getElementById("app");
       app.classList.add("visible");
       document.getElementById("page-summary").innerHTML = '<div class="panel"><div class="panel-body">Loading data from the semantic model…</div></div>';
-      var results = await executeDaxQueries(token, [Q_REVENUE_TARGET, Q_PROJECT_FACT, Q_DEALS]);
+      var results = await executeDaxQueries(token, [
+        Q_REVENUE_TARGET, Q_PROJECT_FACT, Q_DEALS, Q_UTILISATION, Q_ROSTER, Q_CERTIFICATIONS, Q_TARGET_DAILY_RATE,
+      ]);
       RAW.revenue = parseRevenueRows(results[0]);
       RAW.projects = parseProjectRows(results[1]);
       RAW.deals = parseDealRows(results[2]);
+      RAW.utilisation = parseUtilisationRows(results[3]);
+      RAW.roster = parseRosterRows(results[4]);
+      RAW.certifications = parseCertRows(results[5]);
+      RAW.targetRates = parseTargetRateRows(results[6]);
       populateFilters();
       render();
     }
