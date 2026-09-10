@@ -57,9 +57,9 @@
   .tab-btn:hover { color: #eef4f0; }
   .tab-btn.active { color: #fff; border-bottom-color: #2f7a63; }
 
-  .page { display: none; padding: 20px 24px 4px; max-width: 1600px; width: 100%; box-sizing: border-box; margin: 0 auto; }
+  .page { display: none; padding: 20px 24px 4px; max-width: min(2400px, 96vw); width: 100%; box-sizing: border-box; margin: 0 auto; }
   .page.active { display: block; }
-  #footnote { max-width: 1600px; margin: 0 auto 20px; padding: 0 24px; font-size: 11px; font-style: italic; color: #8a938d; box-sizing: border-box; }
+  #footnote { max-width: min(2400px, 96vw); margin: 0 auto 20px; padding: 0 24px; font-size: 11px; font-style: italic; color: #8a938d; box-sizing: border-box; }
 
   .summary-grid { display: grid; grid-template-columns: 230px 1fr; gap: 20px; align-items: start; }
   .kpi-sidebar { display: flex; flex-direction: column; gap: 14px; }
@@ -388,8 +388,8 @@
       var shown = [];
       for (var i = 0; i < f.n; i += step) shown.push(i);
       if (shown[shown.length - 1] !== f.n - 1) {
-        if (shown.length > 1 && f.n - 1 - shown[shown.length - 1] < step / 2) shown[shown.length - 1] = f.n - 1;
-        else shown.push(f.n - 1);
+        if (f.n - 1 - shown[shown.length - 1] >= step) shown.push(f.n - 1);
+        else shown[shown.length - 1] = f.n - 1;
       }
       var xLabelsSvg = "";
       shown.forEach(function (i) {
