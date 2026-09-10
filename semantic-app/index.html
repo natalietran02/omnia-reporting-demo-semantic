@@ -68,7 +68,7 @@
 
   .kpi-card {
     background: #eaf3ee; border-radius: 10px; padding: 16px 18px;
-    box-shadow: 0 1px 2px rgba(1,67,72,.08);
+    box-shadow: 0 1px 2px rgba(1,67,72,.08); text-align: center;
   }
   .kpi-card .label { font-size: 11px; color: #55655d; text-transform: uppercase; letter-spacing: .04em; }
   .kpi-card .value { font-size: 26px; font-weight: 700; margin-top: 4px; color: #14201c; }
@@ -160,7 +160,6 @@
         <button class="tab-btn" data-page="revenue">Revenue Overview</button>
         <button class="tab-btn" data-page="deals">Deals Overview</button>
         <button class="tab-btn" data-page="accounts">Top Accounts</button>
-        <button class="tab-btn" data-page="employees">Employee Overview</button>
         <button class="tab-btn" data-page="utilisation">Utilisation Overview</button>
         <button class="tab-btn" data-page="certifications">Certifications</button>
       </div>
@@ -169,7 +168,6 @@
       <div id="page-revenue" class="page"></div>
       <div id="page-deals" class="page"></div>
       <div id="page-accounts" class="page"></div>
-      <div id="page-employees" class="page"></div>
       <div id="page-utilisation" class="page"></div>
       <div id="page-certifications" class="page"></div>
       <div id="footnote"></div>
@@ -245,22 +243,6 @@
       "    \"LeaveDays\", data_utilisation[leave_days],\n" +
       "    \"UtilisationPct\", data_utilisation[utilisation_pct],\n" +
       "    \"UserId\", data_utilisation[userId]\n" +
-      ")";
-
-    // Roster rows are versioned per user (effective_from); we pick the latest row
-    // per user client-side to determine current headcount.
-    var Q_ROSTER =
-      "EVALUATE\n" +
-      "SELECTCOLUMNS(\n" +
-      "    data_employee_roster,\n" +
-      "    \"UserId\", data_employee_roster[userId],\n" +
-      "    \"Entity\", data_employee_roster[Omnia_Company],\n" +
-      "    \"RoleGroup\", data_employee_roster[role_group],\n" +
-      "    \"EmploymentType\", data_employee_roster[employment_type],\n" +
-      "    \"EffectiveFrom\", data_employee_roster[effective_from],\n" +
-      "    \"EmploymentStart\", data_employee_roster[employment_start_date],\n" +
-      "    \"TerminationDate\", data_employee_roster[termination_date],\n" +
-      "    \"Tenure\", data_employee_roster[tenure]\n" +
       ")";
 
     // This table has no OpCo/entity column, so the Certifications page ignores
@@ -686,7 +668,7 @@
     }
 
     // ---- App state ----
-    var RAW = { revenue: [], projects: [], deals: [], utilisation: [], roster: [], certifications: [], targetRates: [] };
+    var RAW = { revenue: [], projects: [], deals: [], utilisation: [], certifications: [], targetRates: [] };
 
     function parseRevenueRows(rows) {
       return rows.map(function (r) {
@@ -742,20 +724,6 @@
         };
       }).filter(function (r) { return r.month; });
     }
-    function parseRosterRows(rows) {
-      return rows.map(function (r) {
-        return {
-          userId: r["[UserId]"],
-          entity: r["[Entity]"],
-          roleGroup: r["[RoleGroup]"] || "Unspecified",
-          employmentType: r["[EmploymentType]"] || "Unspecified",
-          effectiveFrom: parseDate(r["[EffectiveFrom]"]),
-          employmentStart: parseDate(r["[EmploymentStart]"]),
-          terminationDate: parseDate(r["[TerminationDate]"]),
-          tenure: r["[Tenure]"],
-        };
-      });
-    }
     function parseCertRows(rows) {
       return rows.map(function (r) {
         return {
@@ -794,20 +762,6 @@
       var months = RAW.revenue.filter(function (r) { return r.revenue != null; }).map(function (r) { return r.month; });
       if (!months.length) return new Date();
       return new Date(Math.max.apply(null, months));
-    }
-    // Roster rows are versioned per user (effective_from); take the most recent
-    // row per user, then treat "currently employed" as no termination date.
-    function computeActiveRoster(opco) {
-      var latestByUser = {};
-      RAW.roster.forEach(function (r) {
-        if (!matches(r.entity, opco)) return;
-        var cur = latestByUser[r.userId];
-        if (!cur || (r.effectiveFrom && (!cur.effectiveFrom || r.effectiveFrom > cur.effectiveFrom))) {
-          latestByUser[r.userId] = r;
-        }
-      });
-      return Object.keys(latestByUser).map(function (u) { return latestByUser[u]; })
-        .filter(function (r) { return !r.terminationDate; });
     }
 
     function populateFilters() {
@@ -1251,69 +1205,6 @@
         '<div class="client-panels">' + pipelinePanel + '<div class="panel-stack">' + revenuePiePanel + projectsPiePanel + "</div></div>";
     }
 
-    // ---- Employee Overview page ----
-    function renderEmployeePage(startYear, opco) {
-      var active = computeActiveRoster(opco);
-      var totalEmployees = active.length;
-      var contractors = active.filter(function (r) { return String(r.employmentType || "").toLowerCase().indexOf("contractor") !== -1; }).length;
-      var permanent = totalEmployees - contractors;
-
-      var elapsed = monthsElapsedInFY(startYear, latestRevenueMonth());
-      var revenueScope = sumRevenueWindow(startYear, opco, elapsed);
-      var revenuePerHeadcount = totalEmployees ? revenueScope / totalEmployees : 0;
-
-      var tenures = active.map(function (r) { return r.tenure; }).filter(function (t) { return t != null; });
-      var avgTenure = tenures.length ? tenures.reduce(function (s, t) { return s + t; }, 0) / tenures.length : 0;
-
-      var comboCard =
-        '<div class="kpi-card kpi-card--combo">' +
-        '<div class="combo-item"><div class="label">Permanent</div><div class="value">' + fmtInt(permanent) + '</div></div>' +
-        '<div class="combo-divider"></div>' +
-        '<div class="combo-item"><div class="label">Contractor</div><div class="value">' + fmtInt(contractors) + '</div></div>' +
-        "</div>";
-
-      var kpiHtml =
-        kpiCard("Total Employees", fmtInt(totalEmployees)) +
-        comboCard +
-        kpiCard("Revenue per Headcount", fmtMoneyAbbrev(revenuePerHeadcount)) +
-        kpiCard("Avg. Tenure (Years)", avgTenure.toFixed(2));
-
-      var typeItems = topN(aggregateBy(active, function (r) { return r.employmentType; }, function () { return 1; }), 10);
-      var roleItems = topN(aggregateBy(active, function (r) { return r.roleGroup; }, function () { return 1; }), 10);
-
-      var months = fyMonths(startYear);
-      var xLabels = months.map(monthLabel);
-      var hiresByMonth = {};
-      RAW.roster.forEach(function (r) {
-        if (!matches(r.entity, opco) || !r.employmentStart) return;
-        var k = monthKey(r.employmentStart);
-        hiresByMonth[k] = (hiresByMonth[k] || 0) + 1;
-      });
-      var hireValues = months.map(function (d) { return hiresByMonth[monthKey(d)] || 0; });
-
-      var typePanel =
-        '<div class="panel"><div class="panel-header">Employees by Employment Type<span class="chevron">▾</span></div>' +
-        '<div class="panel-body">' +
-        (typeItems.length ? renderPieChart(typeItems, PIE_COLORS, { valueFmt: fmtInt }) : '<div class="panel-note">No data in scope.</div>') +
-        "</div></div>";
-
-      var rolePanel =
-        '<div class="panel"><div class="panel-header">Employees by Role<span class="chevron">▾</span></div>' +
-        '<div class="panel-body">' +
-        (roleItems.length ? renderPieChart(roleItems, PIE_COLORS, { valueFmt: fmtInt }) : '<div class="panel-note">No data in scope.</div>') +
-        "</div></div>";
-
-      var hiresPanel =
-        '<div class="panel"><div class="panel-header">New Hires by Month<span class="chevron">▾</span></div>' +
-        '<div class="panel-body">' +
-        renderBarChart(hireValues, xLabels, { barColor: "#14201c", yFmt: function (v) { return Math.round(v); } }) +
-        "</div></div>";
-
-      document.getElementById("page-employees").innerHTML =
-        '<div class="kpi-row">' + kpiHtml + "</div>" +
-        '<div class="client-panels"><div class="panel-stack">' + typePanel + rolePanel + "</div>" + hiresPanel + "</div>";
-    }
-
     // ---- Utilisation Overview page ----
     // Employment Type is a page-local filter (not part of the shared header bar,
     // since it only applies here) — its selection is kept in this module-level
@@ -1485,7 +1376,6 @@
       renderRevenuePage(startYear, opco);
       renderDealsPage(opco);
       renderTopAccountsPage(startYear, opco);
-      renderEmployeePage(startYear, opco);
       renderUtilisationPage(startYear, opco);
       renderCertificationsPage();
 
@@ -1511,15 +1401,14 @@
       app.classList.add("visible");
       document.getElementById("page-summary").innerHTML = '<div class="panel"><div class="panel-body">Loading data from the semantic model…</div></div>';
       var results = await executeDaxQueries(token, [
-        Q_REVENUE_TARGET, Q_PROJECT_FACT, Q_DEALS, Q_UTILISATION, Q_ROSTER, Q_CERTIFICATIONS, Q_TARGET_DAILY_RATE,
+        Q_REVENUE_TARGET, Q_PROJECT_FACT, Q_DEALS, Q_UTILISATION, Q_CERTIFICATIONS, Q_TARGET_DAILY_RATE,
       ]);
       RAW.revenue = parseRevenueRows(results[0]);
       RAW.projects = parseProjectRows(results[1]);
       RAW.deals = parseDealRows(results[2]);
       RAW.utilisation = parseUtilisationRows(results[3]);
-      RAW.roster = parseRosterRows(results[4]);
-      RAW.certifications = parseCertRows(results[5]);
-      RAW.targetRates = parseTargetRateRows(results[6]);
+      RAW.certifications = parseCertRows(results[4]);
+      RAW.targetRates = parseTargetRateRows(results[5]);
       populateFilters();
       render();
     }
