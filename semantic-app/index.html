@@ -103,6 +103,7 @@
   .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #434343; }
   .legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: 0 0 auto; }
+  .legend-swatch--dot { border-radius: 50%; }
   .legend-dash { width: 12px; height: 2px; display: inline-block; }
 
   svg.chart { width: 100%; height: auto; max-height: 340px; display: block; }
@@ -639,31 +640,47 @@
       var largeArc = endAngle - startAngle <= 180 ? "0" : "1";
       return ["M", cx, cy, "L", start.x, start.y, "A", r, r, 0, largeArc, 0, end.x, end.y, "Z"].join(" ");
     }
+    // Matches the Power BI reference: legend shows only category (color dot +
+    // name), while value/percent are shown as leader-line callouts pointing out
+    // from each slice rather than in the legend.
     function renderPieChart(items, colors, opts) {
       opts = opts || {};
       var valueFmt = opts.valueFmt || fmtMoneyAbbrev;
       var total = items.reduce(function (s, it) { return s + it.value; }, 0) || 1;
-      var cx = 110, cy = 110, r = 100, angle = 0, slices = "";
+      var W = 440, H = 260, cx = 190, cy = 130, r = 85, angle = 0, slices = "", callouts = "";
+      function calloutLabel(it, midAngle) {
+        var pEdge = polarToCartesian(cx, cy, r, midAngle);
+        var pElbow = polarToCartesian(cx, cy, r + 18, midAngle);
+        var isRight = pElbow.x >= cx;
+        var labelX = isRight ? pElbow.x + 12 : pElbow.x - 12;
+        var pct = (it.value / total * 100).toFixed(2);
+        return '<path d="M' + pEdge.x.toFixed(1) + ',' + pEdge.y.toFixed(1) + 'L' + pElbow.x.toFixed(1) + ',' + pElbow.y.toFixed(1) +
+          'L' + labelX.toFixed(1) + ',' + pElbow.y.toFixed(1) + '" fill="none" stroke="#b7b7b7" stroke-width="1"/>' +
+          '<text x="' + (labelX + (isRight ? 3 : -3)).toFixed(1) + '" y="' + (pElbow.y + 3.5).toFixed(1) +
+          '" text-anchor="' + (isRight ? "start" : "end") + '" font-size="11" fill="#434343">' +
+          escapeHtml(valueFmt(it.value) + " (" + pct + "%)") + "</text>";
+      }
       if (items.length === 1) {
         slices = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + colors[0] + '" ' +
           tipAttrs(items[0].label, [valueFmt(items[0].value) + " · 100%"], colors[0]) + '/>';
+        callouts = calloutLabel(items[0], 0);
       } else {
         items.forEach(function (it, i) {
           var sweep = (it.value / total) * 360;
           var pct = (it.value / total * 100).toFixed(0);
           slices += '<path d="' + describeSlice(cx, cy, r, angle, angle + sweep) + '" fill="' + colors[i % colors.length] + '" ' +
             tipAttrs(it.label, [valueFmt(it.value) + " · " + pct + "%"], colors[i % colors.length]) + '/>';
+          callouts += calloutLabel(it, angle + sweep / 2);
           angle += sweep;
         });
       }
       var legend = items.map(function (it, i) {
-        var pct = (it.value / total * 100).toFixed(2);
-        return '<div class="legend-item"><span class="legend-swatch" style="background:' + colors[i % colors.length] + '"></span>' +
-          escapeHtml(it.label) + " — " + valueFmt(it.value) + " (" + pct + "%)</div>";
+        return '<div class="legend-item"><span class="legend-swatch legend-swatch--dot" style="background:' + colors[i % colors.length] + '"></span>' +
+          escapeHtml(it.label) + "</div>";
       }).join("");
-      return '<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">' +
-        '<svg viewBox="0 0 220 220" style="width:200px;height:200px;flex:0 0 auto;">' + slices + '</svg>' +
-        '<div class="legend" style="flex-direction:column;align-items:flex-start;gap:8px;">' + legend + '</div>' +
+      return '<div style="display:flex;gap:24px;align-items:center;justify-content:center;flex-wrap:wrap;">' +
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:440px;height:auto;flex:1 1 320px;">' + slices + callouts + '</svg>' +
+        '<div class="legend" style="flex-direction:column;align-items:flex-start;gap:8px;flex:0 0 auto;">' + legend + '</div>' +
         '</div>';
     }
 
@@ -773,7 +790,8 @@
       var entities = computeEntityOptions();
       opcoSel.innerHTML = '<option value="All">All OpCos</option>' +
         entities.map(function (e) { return '<option value="' + escapeHtml(e) + '">' + escapeHtml(e) + '</option>'; }).join("");
-      var defaultYear = fyStartYear(latestRevenueMonth());
+      var preferredYear = 2025; // FY26 — default financial year for this report
+      var defaultYear = fyYears.indexOf(preferredYear) !== -1 ? preferredYear : fyStartYear(latestRevenueMonth());
       fySel.value = fyYears.indexOf(defaultYear) !== -1 ? String(defaultYear) : String(fyYears[fyYears.length - 1]);
       opcoSel.value = "All";
       document.querySelector(".header-filters").classList.remove("hidden");
@@ -977,9 +995,6 @@
       var top5Sum = topClients.slice(0, 5).reduce(function (s, it) { return s + it.value; }, 0);
       var top5ConcentrationPct = totalRevenueScope ? (top5Sum / totalRevenueScope * 100) : 0;
 
-      var byProject = aggregateBy(scopedRows, function (r) { return r.project; }, function (r) { return r.revenue; });
-      var topProjects = topN(byProject, 10);
-
       var newClientsByMonth = {};
       Object.keys(firstMonthMap).forEach(function (c) {
         var k = monthKey(firstMonthMap[c]);
@@ -1007,12 +1022,6 @@
         (trendValues.length ? renderBarChart(trendValues, trendLabels, { barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
-      var projectPanel =
-        '<div class="panel"><div class="panel-header">Total Revenue per Project<span class="chevron">▾</span></div>' +
-        '<div class="panel-body">' +
-        (topProjects.length ? renderHBarChart(topProjects, { valueFmt: fmtMoneyAbbrev }) : '<div class="panel-note">No data in scope.</div>') +
-        "</div></div>";
-
       var clientsPanel =
         '<div class="panel"><div class="panel-header">Top 10 Clients by Total Revenue<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
@@ -1021,7 +1030,7 @@
 
       document.getElementById("page-clients").innerHTML =
         '<div class="kpi-row">' + kpiHtml + "</div>" +
-        '<div class="client-panels"><div class="panel-stack">' + trendPanel + projectPanel + "</div>" + clientsPanel + "</div>";
+        '<div class="client-panels">' + trendPanel + clientsPanel + "</div>";
     }
 
     // ---- Revenue Overview page ----
