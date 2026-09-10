@@ -27,6 +27,7 @@
     background: #1c2b25; color: #eef4f0; border: 1px solid #35493f; border-radius: 6px;
     padding: 6px 10px; font-size: 13px; min-width: 140px;
   }
+  .filter-group select:disabled { opacity: .5; cursor: not-allowed; }
   #signin-btn {
     background: #2f7a63; color: #fff; border: none; border-radius: 6px;
     padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -45,11 +46,26 @@
     background: #fbe4e1; color: #7a2a20; font-size: 13px; white-space: pre-wrap;
   }
 
-  #report { display: none; padding: 20px 24px 12px; max-width: 1240px; margin: 0 auto; }
-  #report.visible { display: grid; grid-template-columns: 230px 1fr; gap: 20px; align-items: start; }
+  #app { display: none; }
+  #app.visible { display: block; }
+
+  .tabs { display: flex; gap: 4px; padding: 0 24px; background: #0e1a15; flex: 0 0 auto; }
+  .tab-btn {
+    background: transparent; border: none; color: #9db3ab; padding: 12px 16px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  .tab-btn:hover { color: #eef4f0; }
+  .tab-btn.active { color: #fff; border-bottom-color: #2f7a63; }
+
+  .page { display: none; padding: 20px 24px 4px; max-width: 1240px; margin: 0 auto; }
+  .page.active { display: block; }
   #footnote { max-width: 1240px; margin: 0 auto 20px; padding: 0 24px; font-size: 11px; font-style: italic; color: #8a938d; }
 
+  .summary-grid { display: grid; grid-template-columns: 230px 1fr; gap: 20px; align-items: start; }
   .kpi-sidebar { display: flex; flex-direction: column; gap: 14px; }
+  .kpi-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .kpi-row .kpi-card { flex: 1 1 200px; }
+
   .kpi-card {
     background: #eaf3ee; border-radius: 10px; padding: 16px 18px;
     box-shadow: 0 1px 2px rgba(1,67,72,.08);
@@ -59,13 +75,19 @@
   .kpi-card .delta { font-size: 12px; margin-top: 4px; font-weight: 600; }
   .kpi-card .delta.up { color: #2f7a63; }
   .kpi-card .delta.down { color: #c0392b; }
+  .kpi-card .subtext { font-size: 12px; margin-top: 4px; font-weight: 600; color: #2f7a63; }
   .kpi-card--primary { background: #14201c; }
   .kpi-card--primary .label { color: #9db3ab; }
   .kpi-card--primary .value { color: #fff; }
   .kpi-card--primary .delta.up { color: #8fe0b8; }
   .kpi-card--primary .delta.down { color: #ffb4a8; }
+  .kpi-card--combo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .kpi-card--combo .combo-item { flex: 1 1 auto; text-align: center; }
+  .kpi-card--combo .combo-divider { width: 1px; align-self: stretch; background: #c8d6cd; }
 
   .panels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .client-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  .panel-stack { display: flex; flex-direction: column; gap: 20px; }
   .panel { border-radius: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(1,67,72,.08); background: #fff; }
   .panel-header {
     background: #14201c; color: #eef4f0; padding: 10px 16px; font-size: 13px; font-weight: 600;
@@ -77,7 +99,7 @@
 
   .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #434343; }
-  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: 0 0 auto; }
   .legend-dash { width: 12px; height: 2px; display: inline-block; }
 
   svg.chart { width: 100%; height: auto; display: block; }
@@ -85,15 +107,16 @@
   .gridline { stroke: #eceeec; stroke-width: 1; }
 
   @media (max-width: 900px) {
-    #report.visible { grid-template-columns: 1fr; }
+    .summary-grid { grid-template-columns: 1fr; }
     .panels-grid { grid-template-columns: 1fr; }
+    .client-panels { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
   <header>
     <div class="header-left">
-      <h1>Omnia Reporting — Summary</h1>
+      <h1 id="page-title">Omnia Reporting</h1>
       <div class="sub">Semantic model demo — queried directly, not embedded</div>
     </div>
     <div class="header-right">
@@ -115,8 +138,17 @@
     <div id="placeholder">
       <div>Sign in with your EdgeRed account to load the report.</div>
     </div>
-    <div id="report"></div>
-    <div id="footnote"></div>
+    <div id="app">
+      <div class="tabs">
+        <button class="tab-btn active" data-page="summary">Summary</button>
+        <button class="tab-btn" data-page="clients">Client Overview</button>
+        <button class="tab-btn" data-page="revenue">Revenue Overview</button>
+      </div>
+      <div id="page-summary" class="page active"></div>
+      <div id="page-clients" class="page"></div>
+      <div id="page-revenue" class="page"></div>
+      <div id="footnote"></div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.20.0/lib/msal-browser.min.js"></script>
@@ -128,12 +160,7 @@
     var DATASET_ID = "8c11a7f7-0992-4591-b51a-50889e641617"; // "Omnia Reporting Demo" semantic model
     var POWERBI_SCOPE = "https://analysis.windows.net/powerbi/api/Dataset.Read.All";
 
-    var ENTITY_COLORS = {
-      "Solace Advisory": "#2f7a63",
-      "Kestrel Group": "#c0392b",
-      "Northlight AI": "#3d7373",
-      "Fernway Data": "#e0a800",
-    };
+    var PIE_COLORS = ["#14201c", "#7c8f89", "#3d7373", "#bfe0cd", "#2f7a63", "#a9c9b8"];
 
     // ---- DAX queries ----
     // Revenue vs. target: one row per entity/month, both actual and target in the same table.
@@ -147,13 +174,17 @@
       ")\n" +
       "ORDER BY data_revenue_target[month_date]";
 
-    // Client industry mix: unified fact table carries revenue by industry directly.
-    var Q_INDUSTRY =
+    // Project/client/industry/stream revenue mix all come from this one fact table,
+    // so a single richer query covers every breakdown used across the three pages.
+    var Q_PROJECT_FACT =
       "EVALUATE\n" +
       "SUMMARIZECOLUMNS(\n" +
       "    data_powerbi_unified_fact[month_date],\n" +
       "    data_powerbi_unified_fact[entity],\n" +
+      "    data_powerbi_unified_fact[client_name],\n" +
       "    data_powerbi_unified_fact[client_industry],\n" +
+      "    data_powerbi_unified_fact[Project_Name],\n" +
+      "    data_powerbi_unified_fact[project_stream],\n" +
       "    \"TotalRevenue\", SUM(data_powerbi_unified_fact[total_revenue])\n" +
       ")\n" +
       "ORDER BY data_powerbi_unified_fact[month_date]";
@@ -272,11 +303,13 @@
       return '<div class="delta ' + cls + '">' + Math.abs(pct).toFixed(1) + "%" + arrow + " vs LY</div>";
     }
 
-    function kpiCard(label, valueHtml, deltaPct, primary) {
-      return '<div class="kpi-card' + (primary ? " kpi-card--primary" : "") + '">' +
+    function kpiCard(label, valueHtml, opts) {
+      opts = opts || {};
+      var sub = opts.subText ? '<div class="subtext">' + escapeHtml(opts.subText) + "</div>" : "";
+      return '<div class="kpi-card' + (opts.primary ? " kpi-card--primary" : "") + '">' +
         '<div class="label">' + label + "</div>" +
         '<div class="value">' + valueHtml + "</div>" +
-        deltaHtml(deltaPct) +
+        deltaHtml(opts.deltaPct) + sub +
         "</div>";
     }
 
@@ -289,6 +322,18 @@
       return months;
     }
     function monthKey(d) { return d.getFullYear() * 12 + d.getMonth(); }
+    function monthsRangeFromData(rows, opco) {
+      var mn = null, mx = null;
+      rows.forEach(function (r) {
+        if (!matches(r.entity, opco)) return;
+        if (!mn || r.month < mn) mn = r.month;
+        if (!mx || r.month > mx) mx = r.month;
+      });
+      if (!mn) return [];
+      var arr = [], cur = new Date(mn.getFullYear(), mn.getMonth(), 1);
+      while (cur <= mx) { arr.push(new Date(cur)); cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); }
+      return arr;
+    }
 
     // Any Deal_Stage value containing "won"/"lost" is classified as such; everything
     // else (Discovery, Proposal, etc.) is treated as still-open pipeline. This avoids
@@ -300,9 +345,28 @@
       return "open";
     }
 
+    function matches(value, selected) {
+      return selected === "All" || String(value) === selected;
+    }
+    function inScope(row, monthsSet, opco) {
+      return matches(row.entity, opco) && (monthsSet === null || monthsSet[monthKey(row.month)]);
+    }
+    function aggregateBy(rows, keyFn, valFn) {
+      var map = {};
+      rows.forEach(function (r) {
+        var k = keyFn(r);
+        if (k == null) return;
+        map[k] = (map[k] || 0) + valFn(r);
+      });
+      return map;
+    }
+    function topN(map, n) {
+      return Object.keys(map).map(function (k) { return { label: k, value: map[k] }; })
+        .sort(function (a, b) { return b.value - a.value; }).slice(0, n);
+    }
+
     // ---- SVG chart helpers ----
-    function chartFrame(n, opts) {
-      opts = opts || {};
+    function chartFrame(n) {
       var W = 360, H = 220, padL = 44, padR = 12, padT = 12, padB = 26;
       return { W: W, H: H, padL: padL, padR: padR, padT: padT, padB: padB, plotW: W - padL - padR, plotH: H - padT - padB, n: n };
     }
@@ -320,7 +384,7 @@
       var xLabelsSvg = "";
       xLabels.forEach(function (lbl, i) {
         if (i % xTickEvery !== 0 && i !== f.n - 1) return;
-        var x = f.padL + (f.n <= 1 ? 0 : (i / (f.n - 1)) * f.plotW) + (f.barCenter || 0);
+        var x = f.padL + (f.n <= 1 ? 0 : (i / (f.n - 1)) * f.plotW);
         xLabelsSvg += '<text class="axis-label" x="' + x + '" y="' + (f.H - 6) + '" text-anchor="middle">' + escapeHtml(lbl) + '</text>';
       });
       return { yScale: yScale, gridlines: gridlines, yLabels: yLabels, xLabelsSvg: xLabelsSvg };
@@ -348,7 +412,7 @@
         var x = f.padL + i * bw + (bw - barW) / 2;
         var y = axes.yScale(t);
         markers += '<line x1="' + x.toFixed(1) + '" x2="' + (x + barW).toFixed(1) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) +
-          '" stroke="#14201c" stroke-width="3"/>';
+          '" stroke="' + (opts.targetColor || "#14201c") + '" stroke-width="3"/>';
       });
       return '<svg class="chart" viewBox="0 0 ' + f.W + ' ' + f.H + '">' +
         axes.gridlines + axes.yLabels + axes.xLabelsSvg + bars + markers + "</svg>";
@@ -373,23 +437,62 @@
         axes.gridlines + axes.yLabels + axes.xLabelsSvg + bars + "</svg>";
     }
 
-    function renderHBarChart(items) {
-      var rowH = 20, gap = 8, labelW = 160, padR = 44, W = 360;
+    // opts.valueFmt: optional formatter to print the value at the end of each bar.
+    function renderHBarChart(items, opts) {
+      opts = opts || {};
+      var rowH = 20, gap = 8, labelW = 160, padR = opts.valueFmt ? 60 : 44, W = 360;
       var maxVal = Math.max.apply(null, items.map(function (it) { return it.value; }).concat([1]));
       var plotW = W - labelW - padR;
       var H = items.length * (rowH + gap) + 10;
       var rows = items.map(function (it, i) {
         var y = 6 + i * (rowH + gap);
         var w = maxVal > 0 ? (it.value / maxVal) * plotW : 0;
+        var valueLabel = opts.valueFmt
+          ? '<text class="axis-label" x="' + (labelW + w + 6) + '" y="' + (y + rowH * 0.7) + '">' + opts.valueFmt(it.value) + '</text>'
+          : "";
         return '<text class="axis-label" x="' + (labelW - 8) + '" y="' + (y + rowH * 0.7) + '" text-anchor="end">' +
           escapeHtml(it.label) + '</text>' +
-          '<rect x="' + labelW + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + rowH + '" rx="2" fill="#8fc7a8"/>';
+          '<rect x="' + labelW + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + rowH + '" rx="2" fill="' + (opts.barColor || "#8fc7a8") + '"/>' +
+          valueLabel;
       }).join("");
       return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '">' + rows + "</svg>";
     }
 
+    function polarToCartesian(cx, cy, r, angleDeg) {
+      var a = (angleDeg - 90) * Math.PI / 180;
+      return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+    }
+    function describeSlice(cx, cy, r, startAngle, endAngle) {
+      var start = polarToCartesian(cx, cy, r, endAngle);
+      var end = polarToCartesian(cx, cy, r, startAngle);
+      var largeArc = endAngle - startAngle <= 180 ? "0" : "1";
+      return ["M", cx, cy, "L", start.x, start.y, "A", r, r, 0, largeArc, 0, end.x, end.y, "Z"].join(" ");
+    }
+    function renderPieChart(items, colors) {
+      var total = items.reduce(function (s, it) { return s + it.value; }, 0) || 1;
+      var cx = 110, cy = 110, r = 100, angle = 0, slices = "";
+      if (items.length === 1) {
+        slices = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + colors[0] + '"/>';
+      } else {
+        items.forEach(function (it, i) {
+          var sweep = (it.value / total) * 360;
+          slices += '<path d="' + describeSlice(cx, cy, r, angle, angle + sweep) + '" fill="' + colors[i % colors.length] + '"/>';
+          angle += sweep;
+        });
+      }
+      var legend = items.map(function (it, i) {
+        var pct = (it.value / total * 100).toFixed(2);
+        return '<div class="legend-item"><span class="legend-swatch" style="background:' + colors[i % colors.length] + '"></span>' +
+          escapeHtml(it.label) + " — " + fmtMoneyAbbrev(it.value) + " (" + pct + "%)</div>";
+      }).join("");
+      return '<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">' +
+        '<svg viewBox="0 0 220 220" style="width:200px;height:200px;flex:0 0 auto;">' + slices + '</svg>' +
+        '<div class="legend" style="flex-direction:column;align-items:flex-start;gap:8px;">' + legend + '</div>' +
+        '</div>';
+    }
+
     // ---- App state ----
-    var RAW = { revenue: [], industry: [], deals: [] };
+    var RAW = { revenue: [], projects: [], deals: [] };
 
     function parseRevenueRows(rows) {
       return rows.map(function (r) {
@@ -401,12 +504,15 @@
         };
       }).filter(function (r) { return r.month; });
     }
-    function parseIndustryRows(rows) {
+    function parseProjectRows(rows) {
       return rows.map(function (r) {
         return {
           month: parseDate(r["data_powerbi_unified_fact[month_date]"]),
           entity: r["data_powerbi_unified_fact[entity]"],
           industry: r["data_powerbi_unified_fact[client_industry]"] || "Unspecified",
+          client: r["data_powerbi_unified_fact[client_name]"] || "Unknown",
+          project: r["data_powerbi_unified_fact[Project_Name]"] || "Unspecified",
+          stream: r["data_powerbi_unified_fact[project_stream]"] || "Unspecified",
           revenue: r["[TotalRevenue]"] || 0,
         };
       }).filter(function (r) { return r.month; });
@@ -425,10 +531,6 @@
       }).filter(function (r) { return r.closeDate; });
     }
 
-    function matches(value, selected) {
-      return selected === "All" || String(value) === selected;
-    }
-
     function computeFYOptions() {
       var years = {};
       RAW.revenue.forEach(function (r) { years[fyStartYear(r.month)] = true; });
@@ -438,7 +540,7 @@
     function computeEntityOptions() {
       var set = {};
       RAW.revenue.forEach(function (r) { if (r.entity) set[r.entity] = true; });
-      RAW.industry.forEach(function (r) { if (r.entity) set[r.entity] = true; });
+      RAW.projects.forEach(function (r) { if (r.entity) set[r.entity] = true; });
       return Object.keys(set).sort();
     }
     function latestRevenueMonth() {
@@ -451,7 +553,8 @@
       var fySel = document.getElementById("fy-select");
       var opcoSel = document.getElementById("opco-select");
       var fyYears = computeFYOptions();
-      fySel.innerHTML = fyYears.map(function (y) { return '<option value="' + y + '">' + fyLabel(y) + '</option>'; }).join("");
+      fySel.innerHTML = '<option value="all">All</option>' +
+        fyYears.map(function (y) { return '<option value="' + y + '">' + fyLabel(y) + '</option>'; }).join("");
       var entities = computeEntityOptions();
       opcoSel.innerHTML = '<option value="All">All OpCos</option>' +
         entities.map(function (e) { return '<option value="' + escapeHtml(e) + '">' + escapeHtml(e) + '</option>'; }).join("");
@@ -460,8 +563,15 @@
       opcoSel.value = "All";
       fySel.disabled = false;
       opcoSel.disabled = false;
-      fySel.addEventListener("change", renderAll);
-      opcoSel.addEventListener("change", renderAll);
+      fySel.addEventListener("change", render);
+      opcoSel.addEventListener("change", render);
+    }
+
+    function currentOpco() { return document.getElementById("opco-select").value; }
+    function isAllFY() { return document.getElementById("fy-select").value === "all"; }
+    function effectiveFYStartYear() {
+      var v = document.getElementById("fy-select").value;
+      return v === "all" ? fyStartYear(latestRevenueMonth()) : Number(v);
     }
 
     function monthsElapsedInFY(startYear, latestMonth) {
@@ -481,18 +591,23 @@
       });
       return total;
     }
+    function sumTargetWindow(startYear, opco, monthLimit) {
+      var months = fyMonths(startYear).slice(0, monthLimit);
+      var keys = {}; months.forEach(function (d) { keys[monthKey(d)] = true; });
+      var total = 0;
+      RAW.revenue.forEach(function (r) {
+        if (matches(r.entity, opco) && keys[monthKey(r.month)] && r.target != null) total += r.target;
+      });
+      return total;
+    }
 
-    function renderAll() {
-      var fySel = document.getElementById("fy-select");
-      var opcoSel = document.getElementById("opco-select");
-      var startYear = Number(fySel.value);
-      var opco = opcoSel.value;
+    // ---- Summary page ----
+    function renderSummaryPage(startYear, opco) {
       var months = fyMonths(startYear);
       var xLabels = months.map(monthLabel);
       var latestMonth = latestRevenueMonth();
       var elapsed = monthsElapsedInFY(startYear, latestMonth);
 
-      // --- Revenue vs target chart ---
       var revByMonth = {};
       RAW.revenue.forEach(function (r) {
         if (matches(r.entity, opco)) {
@@ -505,18 +620,13 @@
       var revValues = months.map(function (d) { var e = revByMonth[monthKey(d)]; return e ? e.revenue : null; });
       var targetValues = months.map(function (d) { var e = revByMonth[monthKey(d)]; return e ? e.target : null; });
 
-      // --- Client industry chart (whole selected FY) ---
       var fyKeys = {}; months.forEach(function (d) { fyKeys[monthKey(d)] = true; });
-      var industryTotals = {};
-      RAW.industry.forEach(function (r) {
-        if (matches(r.entity, opco) && fyKeys[monthKey(r.month)]) {
-          industryTotals[r.industry] = (industryTotals[r.industry] || 0) + r.revenue;
-        }
-      });
-      var industryItems = Object.keys(industryTotals).map(function (k) { return { label: k, value: industryTotals[k] }; })
-        .sort(function (a, b) { return b.value - a.value; }).slice(0, 10);
+      var industryTotals = aggregateBy(
+        RAW.projects.filter(function (r) { return matches(r.entity, opco) && fyKeys[monthKey(r.month)]; }),
+        function (r) { return r.industry; }, function (r) { return r.revenue; }
+      );
+      var industryItems = topN(industryTotals, 10);
 
-      // --- Deals: pipeline (open, from this FY onward) & sales intake (won, within FY months) ---
       var fyStartDate = new Date(startYear, 6, 1);
       var dealsInScope = RAW.deals.filter(function (d) { return matches(d.entity, opco); });
 
@@ -540,7 +650,6 @@
       });
       var intakeValues = months.map(function (d) { return intakeByMonth[monthKey(d)] || 0; });
 
-      // --- KPI: YTD window = FY start through latest completed month ---
       var ytdStart = fyStartDate;
       var ytdEnd = new Date(startYear, 6 + elapsed - 1, 1);
       var wonYTD = dealsInScope.filter(function (d) {
@@ -550,9 +659,6 @@
       var engagementCountYTD = wonYTD.length;
       var avgWonDealSizeYTD = wonYTD.length ? totalWonYTD / wonYTD.length : 0;
 
-      // "New client" = a company whose earliest-ever won deal (within this OpCo scope)
-      // falls inside the current YTD window. Best-effort definition — adjust if you
-      // track new-logo status differently.
       var firstWinByCompany = {};
       dealsInScope.forEach(function (d) {
         if (d.bucket === "won") {
@@ -572,18 +678,17 @@
       var totalRevenueLYYTD = sumRevenueWindow(startYear - 1, opco, elapsed);
       var revenueGrowthPct = totalRevenueLYYTD ? ((totalRevenueYTD - totalRevenueLYYTD) / totalRevenueLYYTD) * 100 : null;
 
-      // --- Render ---
       var kpiHtml =
-        kpiCard("Total Revenue YTD", fmtMoneyAbbrev(totalRevenueYTD), revenueGrowthPct, true) +
-        kpiCard("Engagement Count YTD", fmtInt(engagementCountYTD), null) +
-        kpiCard("New Clients YTD", fmtInt(newClientsYTD), null) +
-        kpiCard("Avg. Won Deal Size YTD", fmtMoneyAbbrev(avgWonDealSizeYTD), null) +
-        kpiCard("Revenue Growth YTD", (revenueGrowthPct == null ? "—" : Math.round(revenueGrowthPct) + "%"), null);
+        kpiCard("Total Revenue YTD", fmtMoneyAbbrev(totalRevenueYTD), { deltaPct: revenueGrowthPct, primary: true }) +
+        kpiCard("Engagement Count YTD", fmtInt(engagementCountYTD)) +
+        kpiCard("New Clients YTD", fmtInt(newClientsYTD)) +
+        kpiCard("Avg. Won Deal Size YTD", fmtMoneyAbbrev(avgWonDealSizeYTD)) +
+        kpiCard("Revenue Growth YTD", revenueGrowthPct == null ? "—" : Math.round(revenueGrowthPct) + "%");
 
       var revenuePanel =
         '<div class="panel"><div class="panel-header">Revenue vs. Target by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#bfe0cd" }) +
+        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#bfe0cd", targetColor: "#14201c" }) +
         '<div class="legend">' +
         '<span class="legend-item"><span class="legend-swatch" style="background:#bfe0cd"></span>Revenue</span>' +
         '<span class="legend-item"><span class="legend-dash" style="background:#14201c"></span>Revenue Target</span>' +
@@ -610,27 +715,196 @@
         renderBarChart(intakeValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#93a3ab" }) +
         "</div></div>";
 
-      document.getElementById("report").innerHTML =
-        '<div class="kpi-sidebar">' + kpiHtml + "</div>" +
-        '<div class="panels-grid">' + revenuePanel + pipelinePanel + industryPanel + intakePanel + "</div>";
+      document.getElementById("page-summary").innerHTML =
+        '<div class="summary-grid"><div class="kpi-sidebar">' + kpiHtml + "</div>" +
+        '<div class="panels-grid">' + revenuePanel + pipelinePanel + industryPanel + intakePanel + "</div></div>";
+    }
+
+    // ---- Client Overview page ----
+    function computeClientFirstMonth(opco) {
+      var first = {};
+      RAW.projects.forEach(function (r) {
+        if (!matches(r.entity, opco) || r.revenue <= 0 || !r.client) return;
+        if (!first[r.client] || r.month < first[r.client]) first[r.client] = r.month;
+      });
+      return first;
+    }
+
+    function renderClientsPage(startYear, opco, allFY) {
+      var trendMonths, monthsSet;
+      if (allFY) {
+        trendMonths = monthsRangeFromData(RAW.projects, opco);
+        monthsSet = null;
+      } else {
+        trendMonths = fyMonths(startYear);
+        monthsSet = {}; trendMonths.forEach(function (d) { monthsSet[monthKey(d)] = true; });
+      }
+
+      var firstMonthMap = computeClientFirstMonth(opco);
+      var scopedRows = RAW.projects.filter(function (r) { return inScope(r, monthsSet, opco) && r.revenue > 0; });
+
+      var activeSet = {};
+      scopedRows.forEach(function (r) { activeSet[r.client] = true; });
+      var activeClients = Object.keys(activeSet).length;
+      var totalRevenueScope = scopedRows.reduce(function (s, r) { return s + r.revenue; }, 0);
+
+      var newSet = {};
+      Object.keys(firstMonthMap).forEach(function (c) {
+        var m = firstMonthMap[c];
+        if (monthsSet === null || monthsSet[monthKey(m)]) newSet[c] = true;
+      });
+      var newClients = Object.keys(newSet).length;
+      var newClientsRevenue = scopedRows.filter(function (r) { return newSet[r.client]; }).reduce(function (s, r) { return s + r.revenue; }, 0);
+      var avgRevenueActive = activeClients ? totalRevenueScope / activeClients : 0;
+      var avgRevenueNew = newClients ? newClientsRevenue / newClients : 0;
+
+      var byClient = aggregateBy(scopedRows, function (r) { return r.client; }, function (r) { return r.revenue; });
+      var topClients = topN(byClient, 10);
+      var top5Sum = topClients.slice(0, 5).reduce(function (s, it) { return s + it.value; }, 0);
+      var top5ConcentrationPct = totalRevenueScope ? (top5Sum / totalRevenueScope * 100) : 0;
+
+      var byProject = aggregateBy(scopedRows, function (r) { return r.project; }, function (r) { return r.revenue; });
+      var topProjects = topN(byProject, 10);
+
+      var newClientsByMonth = {};
+      Object.keys(firstMonthMap).forEach(function (c) {
+        var k = monthKey(firstMonthMap[c]);
+        newClientsByMonth[k] = (newClientsByMonth[k] || 0) + 1;
+      });
+      var trendLabels = trendMonths.map(monthLabel);
+      var trendValues = trendMonths.map(function (d) { return newClientsByMonth[monthKey(d)] || 0; });
+
+      var comboCard =
+        '<div class="kpi-card kpi-card--combo">' +
+        '<div class="combo-item"><div class="label">Active Clients</div><div class="value">' + fmtInt(activeClients) + '</div></div>' +
+        '<div class="combo-divider"></div>' +
+        '<div class="combo-item"><div class="label">New Clients</div><div class="value">' + fmtInt(newClients) + '</div></div>' +
+        "</div>";
+
+      var kpiHtml = comboCard +
+        kpiCard("Avg. Revenue - Active Clients", fmtMoneyAbbrev(avgRevenueActive)) +
+        kpiCard("Avg. Revenue - New Clients", fmtMoneyAbbrev(avgRevenueNew)) +
+        kpiCard("Top 5 Clients Concentration", Math.round(top5ConcentrationPct) + "%");
+
+      var trendPanel =
+        '<div class="panel"><div class="panel-header">New Clients by Month<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        '<div class="panel-note">*Based on date of first revenue</div>' +
+        (trendValues.length ? renderBarChart(trendValues, trendLabels, { barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      var projectPanel =
+        '<div class="panel"><div class="panel-header">Total Revenue per Project<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (topProjects.length ? renderHBarChart(topProjects, { valueFmt: fmtMoneyAbbrev }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      var clientsPanel =
+        '<div class="panel"><div class="panel-header">Top 10 Clients by Total Revenue<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (topClients.length ? renderHBarChart(topClients, { valueFmt: fmtMoneyAbbrev }) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      document.getElementById("page-clients").innerHTML =
+        '<div class="kpi-row">' + kpiHtml + "</div>" +
+        '<div class="client-panels"><div class="panel-stack">' + trendPanel + projectPanel + "</div>" + clientsPanel + "</div>";
+    }
+
+    // ---- Revenue Overview page ----
+    function renderRevenuePage(startYear, opco) {
+      var months = fyMonths(startYear);
+      var xLabels = months.map(monthLabel);
+      var elapsed = monthsElapsedInFY(startYear, latestRevenueMonth());
+
+      var revByMonth = {};
+      RAW.revenue.forEach(function (r) {
+        if (matches(r.entity, opco)) {
+          var k = monthKey(r.month);
+          if (!revByMonth[k]) revByMonth[k] = { revenue: 0, target: 0 };
+          revByMonth[k].revenue += r.revenue || 0;
+          revByMonth[k].target += r.target || 0;
+        }
+      });
+      var revValues = months.map(function (d) { var e = revByMonth[monthKey(d)]; return e ? e.revenue : null; });
+      var targetValues = months.map(function (d) { var e = revByMonth[monthKey(d)]; return e ? e.target : null; });
+
+      var totalRevenueYTD = sumRevenueWindow(startYear, opco, elapsed);
+      var totalRevenueLYYTD = sumRevenueWindow(startYear - 1, opco, elapsed);
+      var revenueGrowthPct = totalRevenueLYYTD ? ((totalRevenueYTD - totalRevenueLYYTD) / totalRevenueLYYTD) * 100 : null;
+      var revenueTargetYTD = sumTargetWindow(startYear, opco, elapsed);
+      var revenueTargetFY = sumTargetWindow(startYear, opco, 12);
+      var pctToTargetYTD = revenueTargetYTD ? (totalRevenueYTD / revenueTargetYTD * 100) : null;
+      var pctToTargetFY = revenueTargetFY ? (totalRevenueYTD / revenueTargetFY * 100) : null;
+
+      var fyKeys = {}; months.forEach(function (d) { fyKeys[monthKey(d)] = true; });
+      var streamTotals = aggregateBy(
+        RAW.projects.filter(function (r) { return matches(r.entity, opco) && fyKeys[monthKey(r.month)]; }),
+        function (r) { return r.stream; }, function (r) { return r.revenue; }
+      );
+      var streamItems = Object.keys(streamTotals).map(function (k) { return { label: k, value: streamTotals[k] }; })
+        .sort(function (a, b) { return b.value - a.value; });
+
+      var kpiHtml =
+        kpiCard("Total Revenue YTD", fmtMoneyAbbrev(totalRevenueYTD)) +
+        kpiCard("Revenue Target YTD", fmtMoneyAbbrev(revenueTargetYTD), { subText: pctToTargetYTD != null ? pctToTargetYTD.toFixed(1) + "% to Target" : null }) +
+        kpiCard("Revenue Target FY", fmtMoneyAbbrev(revenueTargetFY), { subText: pctToTargetFY != null ? pctToTargetFY.toFixed(1) + "% to Target" : null }) +
+        kpiCard("Yearly Revenue Growth", revenueGrowthPct == null ? "—" : Math.round(revenueGrowthPct) + "%");
+
+      var revenuePanel =
+        '<div class="panel"><div class="panel-header">Total Revenue by Month<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#14201c", targetColor: "#bfe0cd" }) +
+        '<div class="legend">' +
+        '<span class="legend-item"><span class="legend-swatch" style="background:#14201c"></span>Total Revenue</span>' +
+        '<span class="legend-item"><span class="legend-dash" style="background:#bfe0cd"></span>Revenue Target</span>' +
+        "</div></div></div>";
+
+      var streamPanel =
+        '<div class="panel"><div class="panel-header">Total Revenue by Project Stream<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (streamItems.length ? renderPieChart(streamItems, PIE_COLORS) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      document.getElementById("page-revenue").innerHTML =
+        '<div class="kpi-row">' + kpiHtml + "</div>" +
+        '<div class="panels-grid">' + revenuePanel + streamPanel + "</div>";
+    }
+
+    function render() {
+      var opco = currentOpco();
+      var startYear = effectiveFYStartYear();
+      var allFY = isAllFY();
+      renderSummaryPage(startYear, opco);
+      renderClientsPage(startYear, opco, allFY);
+      renderRevenuePage(startYear, opco);
 
       var earliestMonth = RAW.revenue.reduce(function (min, r) { return (!min || r.month < min) ? r.month : min; }, null);
+      var latestMonth = latestRevenueMonth();
       document.getElementById("footnote").textContent = earliestMonth
         ? "Note: Data is available from " + monthLabel(earliestMonth) + " until the latest completed month (" + monthLabel(latestMonth) + ")."
         : "";
     }
 
+    document.querySelectorAll(".tab-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        document.querySelectorAll(".page").forEach(function (p) { p.classList.remove("active"); });
+        document.getElementById("page-" + btn.dataset.page).classList.add("active");
+      });
+    });
+
     async function loadReport(token) {
       document.getElementById("placeholder").classList.add("hidden");
-      var report = document.getElementById("report");
-      report.classList.add("visible");
-      report.innerHTML = '<div class="panel"><div class="panel-body">Loading data from the semantic model…</div></div>';
-      var results = await executeDaxQueries(token, [Q_REVENUE_TARGET, Q_INDUSTRY, Q_DEALS]);
+      var app = document.getElementById("app");
+      app.classList.add("visible");
+      document.getElementById("page-summary").innerHTML = '<div class="panel"><div class="panel-body">Loading data from the semantic model…</div></div>';
+      var results = await executeDaxQueries(token, [Q_REVENUE_TARGET, Q_PROJECT_FACT, Q_DEALS]);
       RAW.revenue = parseRevenueRows(results[0]);
-      RAW.industry = parseIndustryRows(results[1]);
+      RAW.projects = parseProjectRows(results[1]);
       RAW.deals = parseDealRows(results[2]);
       populateFilters();
-      renderAll();
+      render();
     }
 
     async function signIn() {
