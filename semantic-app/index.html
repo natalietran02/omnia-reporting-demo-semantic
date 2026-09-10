@@ -13,7 +13,7 @@
     display: flex; flex-direction: column;
   }
   header {
-    padding: 14px 24px; background: #14201c; color: #eef4f0;
+    padding: 14px 24px; background: #001517; color: #eef4f0;
     display: flex; align-items: center; justify-content: space-between; gap: 20px;
     flex: 0 0 auto; flex-wrap: wrap;
   }
@@ -24,15 +24,15 @@
   .filter-group { display: flex; flex-direction: column; gap: 3px; }
   .filter-group label { font-size: 10px; color: #9db3ab; text-transform: uppercase; letter-spacing: .04em; }
   .filter-group select {
-    background: #1c2b25; color: #eef4f0; border: 1px solid #35493f; border-radius: 6px;
+    background: #001e21; color: #eef4f0; border: 1px solid #003a40; border-radius: 6px;
     padding: 6px 10px; font-size: 13px; min-width: 140px;
   }
   .header-filters.hidden { display: none; }
   #signin-btn {
-    background: #2f7a63; color: #fff; border: none; border-radius: 6px;
+    background: #32cd87; color: #001517; border: none; border-radius: 6px;
     padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
   }
-  #signin-btn:hover { background: #35906f; }
+  #signin-btn:hover { background: #28b374; }
   #signin-btn:disabled { cursor: default; opacity: .85; }
 
   #stage { flex: 1 1 auto; position: relative; overflow: auto; }
@@ -55,7 +55,7 @@
     font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; flex: 0 0 auto; white-space: nowrap;
   }
   .tab-btn:hover { color: #eef4f0; }
-  .tab-btn.active { color: #fff; border-bottom-color: #2f7a63; }
+  .tab-btn.active { color: #fff; border-bottom-color: #32cd87; }
 
   .page { display: none; padding: 20px 24px 4px; max-width: min(2400px, 96vw); width: 100%; box-sizing: border-box; margin: 0 auto; }
   .page.active { display: block; }
@@ -67,19 +67,19 @@
   .kpi-row .kpi-card { flex: 1 1 200px; }
 
   .kpi-card {
-    background: #eaf3ee; border-radius: 10px; padding: 16px 18px;
+    background: #e9f9ef; border-radius: 10px; padding: 16px 18px;
     box-shadow: 0 1px 2px rgba(1,67,72,.08); text-align: center;
   }
   .kpi-card .label { font-size: 11px; color: #55655d; text-transform: uppercase; letter-spacing: .04em; }
-  .kpi-card .value { font-size: 26px; font-weight: 700; margin-top: 4px; color: #14201c; }
+  .kpi-card .value { font-size: 26px; font-weight: 700; margin-top: 4px; color: #001517; }
   .kpi-card .delta { font-size: 12px; margin-top: 4px; font-weight: 600; }
-  .kpi-card .delta.up { color: #2f7a63; }
+  .kpi-card .delta.up { color: #037c46; }
   .kpi-card .delta.down { color: #c0392b; }
-  .kpi-card .subtext { font-size: 12px; margin-top: 4px; font-weight: 600; color: #2f7a63; }
-  .kpi-card--primary { background: #14201c; }
+  .kpi-card .subtext { font-size: 12px; margin-top: 4px; font-weight: 600; color: #037c46; }
+  .kpi-card--primary { background: #001517; }
   .kpi-card--primary .label { color: #9db3ab; }
   .kpi-card--primary .value { color: #fff; }
-  .kpi-card--primary .delta.up { color: #8fe0b8; }
+  .kpi-card--primary .delta.up { color: #91fdac; }
   .kpi-card--primary .delta.down { color: #ffb4a8; }
   .kpi-card--combo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .kpi-card--combo .combo-item { flex: 1 1 auto; text-align: center; }
@@ -90,7 +90,7 @@
   .panel-stack { display: flex; flex-direction: column; gap: 20px; }
   .panel { border-radius: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(1,67,72,.08); background: #fff; }
   .panel-header {
-    background: #14201c; color: #eef4f0; padding: 10px 16px; font-size: 13px; font-weight: 600;
+    background: #001517; color: #eef4f0; padding: 10px 16px; font-size: 13px; font-weight: 600;
     display: flex; align-items: center; justify-content: space-between;
   }
   .panel-header .chevron { opacity: .6; font-size: 11px; }
@@ -106,7 +106,7 @@
   .legend-swatch--dot { border-radius: 50%; }
   .legend-dash { width: 12px; height: 2px; display: inline-block; }
 
-  svg.chart { width: 100%; height: auto; max-height: 340px; display: block; }
+  svg.chart { width: 100%; height: auto; display: block; }
   .axis-label { font-size: 10px; fill: #8a938d; }
   .gridline { stroke: #eceeec; stroke-width: 1; }
   svg.chart rect[data-tip-title], svg.chart path[data-tip-title] { cursor: pointer; }
@@ -114,7 +114,7 @@
 
   .chart-tooltip {
     display: none; position: fixed; z-index: 1000; pointer-events: none;
-    background: #14201c; color: #eef4f0; border-radius: 8px; padding: 8px 12px;
+    background: #001517; color: #eef4f0; border-radius: 8px; padding: 8px 12px;
     font-size: 12px; max-width: 240px; box-shadow: 0 6px 16px rgba(0,0,0,.28);
   }
   .chart-tooltip .tooltip-title { font-weight: 700; display: flex; align-items: center; gap: 6px; }
@@ -184,7 +184,7 @@
     var DATASET_ID = "8c11a7f7-0992-4591-b51a-50889e641617"; // "Omnia Reporting Demo" semantic model
     var POWERBI_SCOPE = "https://analysis.windows.net/powerbi/api/Dataset.Read.All";
 
-    var PIE_COLORS = ["#14201c", "#7c8f89", "#3d7373", "#bfe0cd", "#2f7a63", "#a9c9b8"];
+    var PIE_COLORS = ["#001517", "#037c46", "#32cd87", "#c4ffce", "#0b3d2c", "#7fdba8"];
 
     // ---- DAX queries ----
     // Revenue vs. target: one row per entity/month, both actual and target in the same table.
@@ -493,8 +493,13 @@
     });
 
     // ---- SVG chart helpers ----
+    // The viewBox width is chosen to roughly match a real rendered panel width, so
+    // the aspect ratio (width:100%, height:auto) doesn't force the browser to
+    // scale text/bars up or down noticeably between chart types — a mismatch here
+    // previously caused inconsistent text sizes and (once max-height clamped the
+    // resulting oversized height) large empty gutters on wide panels.
     function chartFrame(n) {
-      var W = 360, H = 220, padL = 44, padR = 12, padT = 12, padB = 26;
+      var W = 760, H = 230, padL = 54, padR = 16, padT = 14, padB = 28;
       return { W: W, H: H, padL: padL, padR: padR, padT: padT, padB: padB, plotW: W - padL - padR, plotH: H - padT - padB, n: n };
     }
 
@@ -542,7 +547,7 @@
         var lines = [(opts.seriesLabel || "Revenue") + ": " + (opts.yFmt ? opts.yFmt(v) : v)];
         if (targets[i] != null) lines.push((opts.targetLabel || "Revenue Target") + ": " + (opts.yFmt ? opts.yFmt(targets[i]) : targets[i]));
         bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) +
-          '" height="' + (f.padT + f.plotH - y).toFixed(1) + '" fill="' + (opts.barColor || "#bfe0cd") + '" rx="1" ' +
+          '" height="' + (f.padT + f.plotH - y).toFixed(1) + '" fill="' + (opts.barColor || "#c4ffce") + '" rx="1" ' +
           tipAttrs(xLabels[i], lines, opts.barColor) + '/>';
       });
       var markers = "";
@@ -551,7 +556,7 @@
         var x = f.padL + i * bw + (bw - barW) / 2;
         var y = axes.yScale(t);
         markers += '<line x1="' + x.toFixed(1) + '" x2="' + (x + barW).toFixed(1) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) +
-          '" stroke="' + (opts.targetColor || "#14201c") + '" stroke-width="3"/>';
+          '" stroke="' + (opts.targetColor || "#001517") + '" stroke-width="3"/>';
       });
       return '<svg class="chart" viewBox="0 0 ' + f.W + ' ' + f.H + '">' +
         axes.gridlines + axes.yLabels + axes.xLabelsSvg + bars + markers + "</svg>";
@@ -570,7 +575,7 @@
         var x = f.padL + i * bw + (bw - barW) / 2;
         var y = axes.yScale(v);
         bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) +
-          '" height="' + (f.padT + f.plotH - y).toFixed(1) + '" fill="' + (opts.barColor || "#9aa8a2") + '" rx="1" ' +
+          '" height="' + (f.padT + f.plotH - y).toFixed(1) + '" fill="' + (opts.barColor || "#7f8c86") + '" rx="1" ' +
           tipAttrs(xLabels[i], [opts.yFmt ? opts.yFmt(v) : v], opts.barColor) + '/>';
       });
       return '<svg class="chart" viewBox="0 0 ' + f.W + ' ' + f.H + '">' +
@@ -580,7 +585,7 @@
     // opts.valueFmt: optional formatter to print the value at the end of each bar.
     function renderHBarChart(items, opts) {
       opts = opts || {};
-      var rowH = 20, gap = 8, labelW = 160, padR = opts.valueFmt ? 60 : 44, W = 360;
+      var rowH = 20, gap = 8, labelW = 160, padR = opts.valueFmt ? 90 : 60, W = 760;
       var maxVal = Math.max.apply(null, items.map(function (it) { return it.value; }).concat([1]));
       var plotW = W - labelW - padR;
       var H = items.length * (rowH + gap) + 10;
@@ -590,10 +595,10 @@
         var valueLabel = opts.valueFmt
           ? '<text class="axis-label" x="' + (labelW + w + 6) + '" y="' + (y + rowH * 0.7) + '">' + opts.valueFmt(it.value) + '</text>'
           : "";
-        var tip = tipAttrs(it.label, [opts.valueFmt ? opts.valueFmt(it.value) : it.value], opts.barColor || "#8fc7a8");
+        var tip = tipAttrs(it.label, [opts.valueFmt ? opts.valueFmt(it.value) : it.value], opts.barColor || "#c4ffce");
         return '<text class="axis-label" x="' + (labelW - 8) + '" y="' + (y + rowH * 0.7) + '" text-anchor="end">' +
           escapeHtml(it.label) + '</text>' +
-          '<rect x="' + labelW + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + rowH + '" rx="2" fill="' + (opts.barColor || "#8fc7a8") + '" ' + tip + '/>' +
+          '<rect x="' + labelW + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + rowH + '" rx="2" fill="' + (opts.barColor || "#c4ffce") + '" ' + tip + '/>' +
           valueLabel;
       }).join("");
       return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '">' + rows + "</svg>";
@@ -617,7 +622,7 @@
       var path = segs.map(function (seg) {
         return "M" + seg.map(function (p) { return p.x.toFixed(1) + "," + p.y.toFixed(1); }).join("L");
       }).join(" ");
-      var color = opts.lineColor || "#14201c";
+      var color = opts.lineColor || "#001517";
       var dots = points.map(function (p, i) {
         if (p == null) return "";
         var lines = [opts.yFmt ? opts.yFmt(p.v) : p.v];
@@ -657,7 +662,7 @@
         return '<path d="M' + pEdge.x.toFixed(1) + ',' + pEdge.y.toFixed(1) + 'L' + pElbow.x.toFixed(1) + ',' + pElbow.y.toFixed(1) +
           'L' + labelX.toFixed(1) + ',' + pElbow.y.toFixed(1) + '" fill="none" stroke="#b7b7b7" stroke-width="1"/>' +
           '<text x="' + (labelX + (isRight ? 3 : -3)).toFixed(1) + '" y="' + (pElbow.y + 3.5).toFixed(1) +
-          '" text-anchor="' + (isRight ? "start" : "end") + '" font-size="11" fill="#434343">' +
+          '" text-anchor="' + (isRight ? "start" : "end") + '" font-size="10" fill="#434343">' +
           escapeHtml(valueFmt(it.value) + " (" + pct + "%)") + "</text>";
       }
       if (items.length === 1) {
@@ -920,10 +925,10 @@
       var revenuePanel =
         '<div class="panel"><div class="panel-header">Revenue vs. Target by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#bfe0cd", targetColor: "#14201c" }) +
+        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#c4ffce", targetColor: "#001517" }) +
         '<div class="legend">' +
-        '<span class="legend-item"><span class="legend-swatch" style="background:#bfe0cd"></span>Revenue</span>' +
-        '<span class="legend-item"><span class="legend-dash" style="background:#14201c"></span>Revenue Target</span>' +
+        '<span class="legend-item"><span class="legend-swatch" style="background:#c4ffce"></span>Revenue</span>' +
+        '<span class="legend-item"><span class="legend-dash" style="background:#001517"></span>Revenue Target</span>' +
         "</div></div></div>";
 
       var pipelinePanel =
@@ -931,7 +936,7 @@
         '<div class="panel-body">' +
         '<div class="panel-note">*Includes all open deals from the current FY onwards.</div>' +
         (pipelineMonths.length
-          ? renderBarChart(pipelineValues, pipelineLabels, { yFmt: fmtMoneyAbbrev, barColor: "#93a3ab" })
+          ? renderBarChart(pipelineValues, pipelineLabels, { yFmt: fmtMoneyAbbrev, barColor: "#7f8c86" })
           : '<div class="panel-note">No open pipeline in scope.</div>') +
         "</div></div>";
 
@@ -944,7 +949,7 @@
       var intakePanel =
         '<div class="panel"><div class="panel-header">Sales Intake by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        renderBarChart(intakeValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#93a3ab" }) +
+        renderBarChart(intakeValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#7f8c86" }) +
         "</div></div>";
 
       document.getElementById("page-summary").innerHTML =
@@ -1019,7 +1024,7 @@
         '<div class="panel"><div class="panel-header">New Clients by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
         '<div class="panel-note">*Based on date of first revenue</div>' +
-        (trendValues.length ? renderBarChart(trendValues, trendLabels, { barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        (trendValues.length ? renderBarChart(trendValues, trendLabels, { barColor: "#001517" }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       var clientsPanel =
@@ -1076,10 +1081,10 @@
       var revenuePanel =
         '<div class="panel"><div class="panel-header">Total Revenue by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#14201c", targetColor: "#bfe0cd" }) +
+        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#001517", targetColor: "#c4ffce" }) +
         '<div class="legend">' +
-        '<span class="legend-item"><span class="legend-swatch" style="background:#14201c"></span>Total Revenue</span>' +
-        '<span class="legend-item"><span class="legend-dash" style="background:#bfe0cd"></span>Revenue Target</span>' +
+        '<span class="legend-item"><span class="legend-swatch" style="background:#001517"></span>Total Revenue</span>' +
+        '<span class="legend-item"><span class="legend-dash" style="background:#c4ffce"></span>Revenue Target</span>' +
         "</div></div></div>";
 
       var streamPanel =
@@ -1134,9 +1139,6 @@
         kpiCard("Avg. Deal Size Won - Current FQ", fmtMoneyAbbrev(avgDealCur), { deltaPct: avgDealDeltaPct }) +
         kpiCard("Open Pipeline", fmtMoneyAbbrev(openPipeline));
 
-      var wonAll = dealsInScope.filter(function (d) { return d.bucket === "won" && d.closeDate >= fyStartDate; });
-      var topDeals = topN(aggregateBy(wonAll, function (d) { return d.dealName; }, function (d) { return d.amount; }), 10);
-
       var stageAll = dealsInScope.filter(function (d) { return d.closeDate >= fyStartDate; });
       var stageLabelMap = { won: "Closed Won", lost: "Closed Lost", open: "Open/In Progress" };
       var stageTotals = aggregateBy(stageAll, function (d) { return stageLabelMap[d.bucket]; }, function (d) { return d.amount; });
@@ -1145,30 +1147,23 @@
 
       var confItems = topN(aggregateBy(openDeals, function (d) { return d.confidence; }, function (d) { return d.amount; }), 10);
 
-      var topDealsPanel =
-        '<div class="panel"><div class="panel-header">Top Sales Intake by Amount<span class="chevron">▾</span></div>' +
-        '<div class="panel-body">' +
-        '<div class="panel-note">*Includes all sales intake from the current FY onwards. Showing top 10.</div>' +
-        (topDeals.length ? renderHBarChart(topDeals, { valueFmt: fmtMoneyAbbrev, barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
-        "</div></div>";
-
       var stagePanel =
         '<div class="panel"><div class="panel-header">Deal Amount by Stage<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
         '<div class="panel-note">*Includes all deals from the current FY onwards.</div>' +
-        (stageItems.length ? renderHBarChart(stageItems, { valueFmt: fmtMoneyAbbrev, barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        (stageItems.length ? renderHBarChart(stageItems, { valueFmt: fmtMoneyAbbrev, barColor: "#001517" }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       var confPanel =
         '<div class="panel"><div class="panel-header">Deals in Pipeline by Confidence<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
         '<div class="panel-note">*Includes all deals in pipeline from the current FY onwards.</div>' +
-        (confItems.length ? renderHBarChart(confItems, { valueFmt: fmtMoneyAbbrev, barColor: "#8fc7a8" }) : '<div class="panel-note">No data in scope.</div>') +
+        (confItems.length ? renderHBarChart(confItems, { valueFmt: fmtMoneyAbbrev, barColor: "#c4ffce" }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       document.getElementById("page-deals").innerHTML =
         '<div class="kpi-row">' + kpiHtml + "</div>" +
-        '<div class="client-panels">' + topDealsPanel + '<div class="panel-stack">' + stagePanel + confPanel + "</div></div>";
+        '<div class="panels-grid">' + stagePanel + confPanel + "</div>";
     }
 
     // ---- Top Accounts Overview page ----
@@ -1195,7 +1190,7 @@
       var pipelinePanel =
         '<div class="panel"><div class="panel-header">Top 10 Deals in Pipeline<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        (topPipelineDeals.length ? renderHBarChart(topPipelineDeals, { valueFmt: fmtMoneyAbbrev, barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        (topPipelineDeals.length ? renderHBarChart(topPipelineDeals, { valueFmt: fmtMoneyAbbrev, barColor: "#001517" }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       var revenuePiePanel =
@@ -1291,18 +1286,18 @@
         '<div class="panel"><div class="panel-header">Billable Utilisation by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
         renderBarWithTarget(utilValues, targetValues, xLabels, {
-          yFmt: function (v) { return Math.round(v) + "%"; }, barColor: "#14201c", targetColor: "#bfe0cd",
+          yFmt: function (v) { return Math.round(v) + "%"; }, barColor: "#001517", targetColor: "#c4ffce",
           seriesLabel: "Utilisation", targetLabel: "Utilisation Target",
         }) +
         '<div class="legend">' +
-        '<span class="legend-item"><span class="legend-swatch" style="background:#14201c"></span>Billable Utilisation</span>' +
-        (flatTarget != null ? '<span class="legend-item"><span class="legend-dash" style="background:#bfe0cd"></span>Utilisation Target (avg across grades)</span>' : "") +
+        '<span class="legend-item"><span class="legend-swatch" style="background:#001517"></span>Billable Utilisation</span>' +
+        (flatTarget != null ? '<span class="legend-item"><span class="legend-dash" style="background:#c4ffce"></span>Utilisation Target (avg across grades)</span>' : "") +
         "</div></div></div>";
 
       var leavePanel =
         '<div class="panel"><div class="panel-header">Leave Days by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        renderLineChart(leaveValues, xLabels, { lineColor: "#14201c" }) +
+        renderLineChart(leaveValues, xLabels, { lineColor: "#001517" }) +
         "</div></div>";
 
       document.getElementById("page-utilisation").innerHTML =
@@ -1356,19 +1351,19 @@
       var typesPanel =
         '<div class="panel"><div class="panel-header">Active Certification by Types<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        (titleItems.length ? renderHBarChart(titleItems, { valueFmt: fmtInt, barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        (titleItems.length ? renderHBarChart(titleItems, { valueFmt: fmtInt, barColor: "#001517" }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       var completedPanel =
         '<div class="panel"><div class="panel-header">Certifications Completed by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        (completedValues.length ? renderBarChart(completedValues, completedLabels, { barColor: "#14201c", yFmt: function (v) { return Math.round(v); } }) : '<div class="panel-note">No data in scope.</div>') +
+        (completedValues.length ? renderBarChart(completedValues, completedLabels, { barColor: "#001517", yFmt: function (v) { return Math.round(v); } }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       var expiringPanel =
         '<div class="panel"><div class="panel-header">Expiring Certifications by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        (expiryValues.length ? renderBarChart(expiryValues, expiryLabels, { barColor: "#14201c", yFmt: function (v) { return Math.round(v); } }) : '<div class="panel-note">No data in scope.</div>') +
+        (expiryValues.length ? renderBarChart(expiryValues, expiryLabels, { barColor: "#001517", yFmt: function (v) { return Math.round(v); } }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       document.getElementById("page-certifications").innerHTML =
