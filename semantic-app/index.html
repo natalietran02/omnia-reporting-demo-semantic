@@ -929,7 +929,7 @@
       var revenuePanel =
         '<div class="panel"><div class="panel-header">Revenue vs. Target by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#bfe0cd", targetColor: "#14201c" }) +
+        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#244744", targetColor: "#14201c" }) +
         '<div class="legend">' +
         '<span class="legend-item"><span class="legend-swatch" style="background:#bfe0cd"></span>Revenue</span>' +
         '<span class="legend-item"><span class="legend-dash" style="background:#14201c"></span>Revenue Target</span>' +
@@ -940,20 +940,20 @@
         '<div class="panel-body">' +
         '<div class="panel-note">*Includes all open deals from the current FY onwards.</div>' +
         (pipelineMonths.length
-          ? renderBarChart(pipelineValues, pipelineLabels, { yFmt: fmtMoneyAbbrev, barColor: "#7f8c86" })
+          ? renderBarChart(pipelineValues, pipelineLabels, { yFmt: fmtMoneyAbbrev, barColor: "#cadacb" })
           : '<div class="panel-note">No open pipeline in scope.</div>') +
         "</div></div>";
 
       var industryPanel =
         '<div class="panel"><div class="panel-header">Client Industry by Total Revenue<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        (industryItems.length ? renderHBarChart(industryItems) : '<div class="panel-note">No data in scope.</div>') +
+        (industryItems.length ? renderHBarChart(industryItems, { barColor: "#244744" }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       var intakePanel =
         '<div class="panel"><div class="panel-header">Sales Intake by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        renderBarChart(intakeValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#7f8c86" }) +
+        renderBarChart(intakeValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#cadacb" }) +
         "</div></div>";
 
       document.getElementById("page-summary").innerHTML =
@@ -1028,7 +1028,7 @@
         '<div class="panel"><div class="panel-header">New Clients by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
         '<div class="panel-note">*Based on date of first revenue</div>' +
-        (trendValues.length ? renderBarChart(trendValues, trendLabels, { barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        (trendValues.length ? renderBarChart(trendValues, trendLabels, { barColor: "#244744" }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       var clientsPanel =
@@ -1085,7 +1085,7 @@
       var revenuePanel =
         '<div class="panel"><div class="panel-header">Total Revenue by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#14201c", targetColor: "#bfe0cd" }) +
+        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#244744", targetColor: "#bfe0cd" }) +
         '<div class="legend">' +
         '<span class="legend-item"><span class="legend-swatch" style="background:#14201c"></span>Total Revenue</span>' +
         '<span class="legend-item"><span class="legend-dash" style="background:#bfe0cd"></span>Revenue Target</span>' +
@@ -1196,7 +1196,7 @@
       var pipelinePanel =
         '<div class="panel"><div class="panel-header">Top 10 Deals in Pipeline<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        (topPipelineDeals.length ? renderHBarChart(topPipelineDeals, { valueFmt: fmtMoneyAbbrev, barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        (topPipelineDeals.length ? renderHBarChart(topPipelineDeals, { valueFmt: fmtMoneyAbbrev, barColor: "#244744" }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       var revenuePiePanel =
@@ -1292,7 +1292,7 @@
         '<div class="panel"><div class="panel-header">Billable Utilisation by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
         renderBarWithTarget(utilValues, targetValues, xLabels, {
-          yFmt: function (v) { return Math.round(v) + "%"; }, barColor: "#14201c", targetColor: "#bfe0cd",
+          yFmt: function (v) { return Math.round(v) + "%"; }, barColor: "#244744", targetColor: "#bfe0cd",
           seriesLabel: "Utilisation", targetLabel: "Utilisation Target",
         }) +
         '<div class="legend">' +
@@ -1303,7 +1303,7 @@
       var leavePanel =
         '<div class="panel"><div class="panel-header">Leave Days by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        renderLineChart(leaveValues, xLabels, { lineColor: "#14201c" }) +
+        renderLineChart(leaveValues, xLabels, { lineColor: "#244744" }) +
         "</div></div>";
 
       document.getElementById("page-utilisation").innerHTML =
@@ -1357,19 +1357,19 @@
       var typesPanel =
         '<div class="panel"><div class="panel-header">Active Certification by Types<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        (titleItems.length ? renderHBarChart(titleItems, { valueFmt: fmtInt, barColor: "#14201c" }) : '<div class="panel-note">No data in scope.</div>') +
+        (titleItems.length ? renderHBarChart(titleItems, { valueFmt: fmtInt, barColor: "#244744" }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       var completedPanel =
         '<div class="panel"><div class="panel-header">Certifications Completed by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        (completedValues.length ? renderBarChart(completedValues, completedLabels, { barColor: "#14201c", yFmt: function (v) { return Math.round(v); } }) : '<div class="panel-note">No data in scope.</div>') +
+        (completedValues.length ? renderBarChart(completedValues, completedLabels, { barColor: "#244744", yFmt: function (v) { return Math.round(v); } }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       var expiringPanel =
         '<div class="panel"><div class="panel-header">Expiring Certifications by Month<span class="chevron">▾</span></div>' +
         '<div class="panel-body">' +
-        (expiryValues.length ? renderBarChart(expiryValues, expiryLabels, { barColor: "#14201c", yFmt: function (v) { return Math.round(v); } }) : '<div class="panel-note">No data in scope.</div>') +
+        (expiryValues.length ? renderBarChart(expiryValues, expiryLabels, { barColor: "#cadacb", yFmt: function (v) { return Math.round(v); } }) : '<div class="panel-note">No data in scope.</div>') +
         "</div></div>";
 
       document.getElementById("page-certifications").innerHTML =
