@@ -27,7 +27,7 @@
     background: #1c2b25; color: #eef4f0; border: 1px solid #35493f; border-radius: 6px;
     padding: 6px 10px; font-size: 13px; min-width: 140px;
   }
-  .filter-group select:disabled { opacity: .5; cursor: not-allowed; }
+  .header-filters.hidden { display: none; }
   #signin-btn {
     background: #2f7a63; color: #fff; border: none; border-radius: 6px;
     padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -57,9 +57,9 @@
   .tab-btn:hover { color: #eef4f0; }
   .tab-btn.active { color: #fff; border-bottom-color: #2f7a63; }
 
-  .page { display: none; padding: 20px 24px 4px; max-width: 1240px; margin: 0 auto; }
+  .page { display: none; padding: 20px 24px 4px; max-width: 1600px; width: 100%; box-sizing: border-box; margin: 0 auto; }
   .page.active { display: block; }
-  #footnote { max-width: 1240px; margin: 0 auto 20px; padding: 0 24px; font-size: 11px; font-style: italic; color: #8a938d; }
+  #footnote { max-width: 1600px; margin: 0 auto 20px; padding: 0 24px; font-size: 11px; font-style: italic; color: #8a938d; box-sizing: border-box; }
 
   .summary-grid { display: grid; grid-template-columns: 230px 1fr; gap: 20px; align-items: start; }
   .kpi-sidebar { display: flex; flex-direction: column; gap: 14px; }
@@ -102,7 +102,7 @@
   .legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: 0 0 auto; }
   .legend-dash { width: 12px; height: 2px; display: inline-block; }
 
-  svg.chart { width: 100%; height: auto; display: block; }
+  svg.chart { width: 100%; height: auto; max-height: 340px; display: block; }
   .axis-label { font-size: 10px; fill: #8a938d; }
   .gridline { stroke: #eceeec; stroke-width: 1; }
 
@@ -120,14 +120,14 @@
       <div class="sub">Semantic model demo — queried directly, not embedded</div>
     </div>
     <div class="header-right">
-      <div class="header-filters">
+      <div class="header-filters hidden">
         <div class="filter-group">
           <label>Financial Year</label>
-          <select id="fy-select" disabled><option>Sign in to load</option></select>
+          <select id="fy-select"></select>
         </div>
         <div class="filter-group">
           <label>OpCo</label>
-          <select id="opco-select" disabled><option>Sign in to load</option></select>
+          <select id="opco-select"></select>
         </div>
       </div>
       <button id="signin-btn">Sign in to view</button>
@@ -380,12 +380,21 @@
         gridlines += '<line class="gridline" x1="' + f.padL + '" x2="' + (f.W - f.padR) + '" y1="' + y + '" y2="' + y + '"/>';
         yLabels += '<text class="axis-label" x="' + (f.padL - 6) + '" y="' + (y + 3) + '" text-anchor="end">' + yFmt(val) + '</text>';
       }
-      var xTickEvery = Math.max(1, Math.round(f.n / 6));
+      // Pick evenly-spaced ticks, then only add/replace with the final index if it
+      // won't collide with the last chosen tick (fixes overlapping end labels when
+      // n-1 isn't a multiple of the step, e.g. 12 months at every-2 spacing).
+      var maxTicks = 6;
+      var step = Math.max(1, Math.ceil(f.n / maxTicks));
+      var shown = [];
+      for (var i = 0; i < f.n; i += step) shown.push(i);
+      if (shown[shown.length - 1] !== f.n - 1) {
+        if (shown.length > 1 && f.n - 1 - shown[shown.length - 1] < step / 2) shown[shown.length - 1] = f.n - 1;
+        else shown.push(f.n - 1);
+      }
       var xLabelsSvg = "";
-      xLabels.forEach(function (lbl, i) {
-        if (i % xTickEvery !== 0 && i !== f.n - 1) return;
+      shown.forEach(function (i) {
         var x = f.padL + (f.n <= 1 ? 0 : (i / (f.n - 1)) * f.plotW);
-        xLabelsSvg += '<text class="axis-label" x="' + x + '" y="' + (f.H - 6) + '" text-anchor="middle">' + escapeHtml(lbl) + '</text>';
+        xLabelsSvg += '<text class="axis-label" x="' + x + '" y="' + (f.H - 6) + '" text-anchor="middle">' + escapeHtml(xLabels[i]) + '</text>';
       });
       return { yScale: yScale, gridlines: gridlines, yLabels: yLabels, xLabelsSvg: xLabelsSvg };
     }
@@ -561,8 +570,7 @@
       var defaultYear = fyStartYear(latestRevenueMonth());
       fySel.value = fyYears.indexOf(defaultYear) !== -1 ? String(defaultYear) : String(fyYears[fyYears.length - 1]);
       opcoSel.value = "All";
-      fySel.disabled = false;
-      opcoSel.disabled = false;
+      document.querySelector(".header-filters").classList.remove("hidden");
       fySel.addEventListener("change", render);
       opcoSel.addEventListener("change", render);
     }
