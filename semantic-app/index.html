@@ -105,6 +105,17 @@
   svg.chart { width: 100%; height: auto; max-height: 340px; display: block; }
   .axis-label { font-size: 10px; fill: #8a938d; }
   .gridline { stroke: #eceeec; stroke-width: 1; }
+  svg.chart rect[data-tip-title], svg.chart path[data-tip-title] { cursor: pointer; }
+  svg.chart rect[data-tip-title]:hover, svg.chart path[data-tip-title]:hover { opacity: .85; }
+
+  .chart-tooltip {
+    display: none; position: fixed; z-index: 1000; pointer-events: none;
+    background: #14201c; color: #eef4f0; border-radius: 8px; padding: 8px 12px;
+    font-size: 12px; max-width: 240px; box-shadow: 0 6px 16px rgba(0,0,0,.28);
+  }
+  .chart-tooltip .tooltip-title { font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .chart-tooltip .tooltip-swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; flex: 0 0 auto; }
+  .chart-tooltip .tooltip-detail { margin-top: 2px; color: #b9cbc2; }
 
   @media (max-width: 900px) {
     .summary-grid { grid-template-columns: 1fr; }
@@ -134,6 +145,7 @@
     </div>
   </header>
   <div id="error-box"></div>
+  <div id="chart-tooltip" class="chart-tooltip"></div>
   <div id="stage">
     <div id="placeholder">
       <div>Sign in with your EdgeRed account to load the report.</div>
@@ -365,6 +377,40 @@
         .sort(function (a, b) { return b.value - a.value; }).slice(0, n);
     }
 
+    // ---- Chart hover tooltip ----
+    // Charts are re-rendered as raw HTML strings, so rather than wiring listeners
+    // per shape we tag each hoverable <rect>/<path> with data-tip-* attributes and
+    // use a single delegated mousemove listener on the document.
+    function showTooltip(x, y, html) {
+      var tip = document.getElementById("chart-tooltip");
+      tip.innerHTML = html;
+      tip.style.display = "block";
+      var rect = tip.getBoundingClientRect();
+      var left = x + 14, top = y + 14;
+      if (left + rect.width > window.innerWidth) left = x - rect.width - 14;
+      if (top + rect.height > window.innerHeight) top = y - rect.height - 14;
+      tip.style.left = Math.max(4, left) + "px";
+      tip.style.top = Math.max(4, top) + "px";
+    }
+    function hideTooltip() { document.getElementById("chart-tooltip").style.display = "none"; }
+    function tipAttrs(title, lines, color) {
+      var attrs = 'data-tip-title="' + escapeHtml(title) + '" data-tip-detail="' + escapeHtml(lines.join("||")) + '"';
+      if (color) attrs += ' data-tip-color="' + escapeHtml(color) + '"';
+      return attrs;
+    }
+    document.addEventListener("mousemove", function (e) {
+      var el = e.target.closest && e.target.closest("[data-tip-title]");
+      if (!el) { hideTooltip(); return; }
+      var title = el.getAttribute("data-tip-title") || "";
+      var detailRaw = el.getAttribute("data-tip-detail") || "";
+      var color = el.getAttribute("data-tip-color");
+      var lines = detailRaw ? detailRaw.split("||") : [];
+      var swatch = color ? '<span class="tooltip-swatch" style="background:' + color + '"></span>' : "";
+      var html = '<div class="tooltip-title">' + swatch + escapeHtml(title) + "</div>" +
+        lines.map(function (l) { return '<div class="tooltip-detail">' + escapeHtml(l) + "</div>"; }).join("");
+      showTooltip(e.clientX, e.clientY, html);
+    });
+
     // ---- SVG chart helpers ----
     function chartFrame(n) {
       var W = 360, H = 220, padL = 44, padR = 12, padT = 12, padB = 26;
@@ -412,8 +458,11 @@
         if (v == null) return;
         var x = f.padL + i * bw + (bw - barW) / 2;
         var y = axes.yScale(v);
+        var lines = [(opts.seriesLabel || "Revenue") + ": " + (opts.yFmt ? opts.yFmt(v) : v)];
+        if (targets[i] != null) lines.push((opts.targetLabel || "Revenue Target") + ": " + (opts.yFmt ? opts.yFmt(targets[i]) : targets[i]));
         bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) +
-          '" height="' + (f.padT + f.plotH - y).toFixed(1) + '" fill="' + (opts.barColor || "#bfe0cd") + '" rx="1"/>';
+          '" height="' + (f.padT + f.plotH - y).toFixed(1) + '" fill="' + (opts.barColor || "#bfe0cd") + '" rx="1" ' +
+          tipAttrs(xLabels[i], lines, opts.barColor) + '/>';
       });
       var markers = "";
       targets.forEach(function (t, i) {
@@ -440,7 +489,8 @@
         var x = f.padL + i * bw + (bw - barW) / 2;
         var y = axes.yScale(v);
         bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) +
-          '" height="' + (f.padT + f.plotH - y).toFixed(1) + '" fill="' + (opts.barColor || "#9aa8a2") + '" rx="1"/>';
+          '" height="' + (f.padT + f.plotH - y).toFixed(1) + '" fill="' + (opts.barColor || "#9aa8a2") + '" rx="1" ' +
+          tipAttrs(xLabels[i], [opts.yFmt ? opts.yFmt(v) : v], opts.barColor) + '/>';
       });
       return '<svg class="chart" viewBox="0 0 ' + f.W + ' ' + f.H + '">' +
         axes.gridlines + axes.yLabels + axes.xLabelsSvg + bars + "</svg>";
@@ -459,9 +509,10 @@
         var valueLabel = opts.valueFmt
           ? '<text class="axis-label" x="' + (labelW + w + 6) + '" y="' + (y + rowH * 0.7) + '">' + opts.valueFmt(it.value) + '</text>'
           : "";
+        var tip = tipAttrs(it.label, [opts.valueFmt ? opts.valueFmt(it.value) : it.value], opts.barColor || "#8fc7a8");
         return '<text class="axis-label" x="' + (labelW - 8) + '" y="' + (y + rowH * 0.7) + '" text-anchor="end">' +
           escapeHtml(it.label) + '</text>' +
-          '<rect x="' + labelW + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + rowH + '" rx="2" fill="' + (opts.barColor || "#8fc7a8") + '"/>' +
+          '<rect x="' + labelW + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + rowH + '" rx="2" fill="' + (opts.barColor || "#8fc7a8") + '" ' + tip + '/>' +
           valueLabel;
       }).join("");
       return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '">' + rows + "</svg>";
@@ -481,11 +532,14 @@
       var total = items.reduce(function (s, it) { return s + it.value; }, 0) || 1;
       var cx = 110, cy = 110, r = 100, angle = 0, slices = "";
       if (items.length === 1) {
-        slices = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + colors[0] + '"/>';
+        slices = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + colors[0] + '" ' +
+          tipAttrs(items[0].label, [fmtMoneyAbbrev(items[0].value) + " · 100%"], colors[0]) + '/>';
       } else {
         items.forEach(function (it, i) {
           var sweep = (it.value / total) * 360;
-          slices += '<path d="' + describeSlice(cx, cy, r, angle, angle + sweep) + '" fill="' + colors[i % colors.length] + '"/>';
+          var pct = (it.value / total * 100).toFixed(0);
+          slices += '<path d="' + describeSlice(cx, cy, r, angle, angle + sweep) + '" fill="' + colors[i % colors.length] + '" ' +
+            tipAttrs(it.label, [fmtMoneyAbbrev(it.value) + " · " + pct + "%"], colors[i % colors.length]) + '/>';
           angle += sweep;
         });
       }
