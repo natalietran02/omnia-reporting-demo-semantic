@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Omnia Reporting — Semantic Demo</title>
+<title>Omnia Reporting — Exec Summary</title>
 <style>
   :root { color-scheme: light; }
   html, body { height: 100%; margin: 0; }
@@ -14,11 +14,19 @@
   }
   header {
     padding: 14px 24px; background: #14201c; color: #eef4f0;
-    display: flex; align-items: center; justify-content: space-between;
-    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    flex: 0 0 auto; flex-wrap: wrap;
   }
   header h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .01em; }
   header .sub { font-size: 12px; color: #9db3ab; margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .header-filters { display: flex; align-items: center; gap: 16px; }
+  .filter-group { display: flex; flex-direction: column; gap: 3px; }
+  .filter-group label { font-size: 10px; color: #9db3ab; text-transform: uppercase; letter-spacing: .04em; }
+  .filter-group select {
+    background: #1c2b25; color: #eef4f0; border: 1px solid #35493f; border-radius: 6px;
+    padding: 6px 10px; font-size: 13px; min-width: 140px;
+  }
   #signin-btn {
     background: #2f7a63; color: #fff; border: none; border-radius: 6px;
     padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -37,44 +45,70 @@
     background: #fbe4e1; color: #7a2a20; font-size: 13px; white-space: pre-wrap;
   }
 
-  #report { display: none; padding: 20px 24px 40px; max-width: 1080px; margin: 0 auto; }
-  #report.visible { display: block; }
+  #report { display: none; padding: 20px 24px 12px; max-width: 1240px; margin: 0 auto; }
+  #report.visible { display: grid; grid-template-columns: 230px 1fr; gap: 20px; align-items: start; }
+  #footnote { max-width: 1240px; margin: 0 auto 20px; padding: 0 24px; font-size: 11px; font-style: italic; color: #8a938d; }
 
-  .kpi-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .kpi-sidebar { display: flex; flex-direction: column; gap: 14px; }
   .kpi-card {
-    flex: 1 1 200px; background: #fff; border-radius: 10px; padding: 16px 18px;
+    background: #eaf3ee; border-radius: 10px; padding: 16px 18px;
     box-shadow: 0 1px 2px rgba(1,67,72,.08);
   }
-  .kpi-card .label { font-size: 12px; color: #6b756f; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi-card .label { font-size: 11px; color: #55655d; text-transform: uppercase; letter-spacing: .04em; }
   .kpi-card .value { font-size: 26px; font-weight: 700; margin-top: 4px; color: #14201c; }
-  .kpi-card .delta { font-size: 12px; margin-top: 4px; }
+  .kpi-card .delta { font-size: 12px; margin-top: 4px; font-weight: 600; }
   .kpi-card .delta.up { color: #2f7a63; }
   .kpi-card .delta.down { color: #c0392b; }
-  .kpi-card .sub { font-size: 11px; color: #8a938d; margin-top: 2px; }
+  .kpi-card--primary { background: #14201c; }
+  .kpi-card--primary .label { color: #9db3ab; }
+  .kpi-card--primary .value { color: #fff; }
+  .kpi-card--primary .delta.up { color: #8fe0b8; }
+  .kpi-card--primary .delta.down { color: #ffb4a8; }
 
-  .panel {
-    background: #fff; border-radius: 10px; padding: 18px 20px; margin-bottom: 20px;
-    box-shadow: 0 1px 2px rgba(1,67,72,.08);
+  .panels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .panel { border-radius: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(1,67,72,.08); background: #fff; }
+  .panel-header {
+    background: #14201c; color: #eef4f0; padding: 10px 16px; font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; justify-content: space-between;
   }
-  .panel h2 { font-size: 14px; margin: 0 0 4px; color: #14201c; }
-  .panel .panel-sub { font-size: 12px; color: #6b756f; margin-bottom: 12px; }
+  .panel-header .chevron { opacity: .6; font-size: 11px; }
+  .panel-body { padding: 14px 16px 18px; }
+  .panel-note { font-size: 11px; font-style: italic; color: #6b756f; margin-bottom: 8px; }
 
   .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #434343; }
   .legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .legend-dash { width: 12px; height: 2px; display: inline-block; }
 
   svg.chart { width: 100%; height: auto; display: block; }
   .axis-label { font-size: 10px; fill: #8a938d; }
   .gridline { stroke: #eceeec; stroke-width: 1; }
+
+  @media (max-width: 900px) {
+    #report.visible { grid-template-columns: 1fr; }
+    .panels-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
   <header>
-    <div>
-      <h1>Omnia Reporting — Utilisation &amp; Workforce</h1>
+    <div class="header-left">
+      <h1>Omnia Reporting — Summary</h1>
       <div class="sub">Semantic model demo — queried directly, not embedded</div>
     </div>
-    <button id="signin-btn">Sign in to view</button>
+    <div class="header-right">
+      <div class="header-filters">
+        <div class="filter-group">
+          <label>Financial Year</label>
+          <select id="fy-select" disabled><option>Sign in to load</option></select>
+        </div>
+        <div class="filter-group">
+          <label>OpCo</label>
+          <select id="opco-select" disabled><option>Sign in to load</option></select>
+        </div>
+      </div>
+      <button id="signin-btn">Sign in to view</button>
+    </div>
   </header>
   <div id="error-box"></div>
   <div id="stage">
@@ -82,6 +116,7 @@
       <div>Sign in with your EdgeRed account to load the report.</div>
     </div>
     <div id="report"></div>
+    <div id="footnote"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.20.0/lib/msal-browser.min.js"></script>
@@ -99,27 +134,42 @@
       "Northlight AI": "#3d7373",
       "Fernway Data": "#e0a800",
     };
-    var ENTITY_ORDER = ["Solace Advisory", "Kestrel Group", "Northlight AI", "Fernway Data"];
 
-    var Q_TREND =
+    // ---- DAX queries ----
+    // Revenue vs. target: one row per entity/month, both actual and target in the same table.
+    var Q_REVENUE_TARGET =
       "EVALUATE\n" +
       "SUMMARIZECOLUMNS(\n" +
-      "    data_utilisation[month],\n" +
-      "    \"AvgUtilisation\", AVERAGE(data_utilisation[utilisation_pct]),\n" +
-      "    \"TotalFTE\", SUM(data_utilisation[fte]),\n" +
-      "    \"TotalBilled\", SUM(data_utilisation[billed_amount])\n" +
+      "    data_revenue_target[month_date],\n" +
+      "    data_revenue_target[entity],\n" +
+      "    \"Revenue\", SUM(data_revenue_target[total_revenue]),\n" +
+      "    \"RevenueTarget\", SUM(data_revenue_target[revenue_target])\n" +
       ")\n" +
-      "ORDER BY data_utilisation[month]";
+      "ORDER BY data_revenue_target[month_date]";
 
-    var Q_ENTITY =
+    // Client industry mix: unified fact table carries revenue by industry directly.
+    var Q_INDUSTRY =
       "EVALUATE\n" +
       "SUMMARIZECOLUMNS(\n" +
-      "    data_utilisation[month],\n" +
-      "    data_utilisation[Omnia_Company],\n" +
-      "    \"AvgUtilisation\", AVERAGE(data_utilisation[utilisation_pct]),\n" +
-      "    \"TotalFTE\", SUM(data_utilisation[fte])\n" +
+      "    data_powerbi_unified_fact[month_date],\n" +
+      "    data_powerbi_unified_fact[entity],\n" +
+      "    data_powerbi_unified_fact[client_industry],\n" +
+      "    \"TotalRevenue\", SUM(data_powerbi_unified_fact[total_revenue])\n" +
       ")\n" +
-      "ORDER BY data_utilisation[month], data_utilisation[Omnia_Company]";
+      "ORDER BY data_powerbi_unified_fact[month_date]";
+
+    // Deal-level rows: pipeline, win rate, deal size and new-client KPIs are all derived
+    // client-side from this, since none of them are pre-aggregated in the model.
+    var Q_DEALS =
+      "EVALUATE\n" +
+      "SELECTCOLUMNS(\n" +
+      "    data_hubspot_deals,\n" +
+      "    \"Company\", data_hubspot_deals[Company],\n" +
+      "    \"OmniaCompany\", data_hubspot_deals[Omnia_Company],\n" +
+      "    \"DealStage\", data_hubspot_deals[Deal_Stage],\n" +
+      "    \"CloseDate\", data_hubspot_deals[Close_Date],\n" +
+      "    \"Amount\", data_hubspot_deals[Amount]\n" +
+      ")";
 
     var msalApp = new msal.PublicClientApplication({
       auth: {
@@ -192,180 +242,395 @@
       return results;
     }
 
-    function parseMonth(v) {
+    // ---- Formatting helpers ----
+    function parseDate(v) {
       var d = new Date(v);
       return isNaN(d.getTime()) ? null : d;
     }
-
     function monthLabel(d) {
       return d.toLocaleDateString("en-AU", { month: "short", year: "2-digit" });
     }
-
-    function fmtPct(v) { return v.toFixed(1) + "%"; }
-    function fmtNum(v) { return v.toLocaleString("en-AU", { maximumFractionDigits: 1 }); }
-    function fmtMoney(v) {
-      return "$" + Math.round(v).toLocaleString("en-AU");
+    function fmtMoneyAbbrev(v) {
+      v = v || 0;
+      var sign = v < 0 ? "-" : "";
+      var abs = Math.abs(v);
+      if (abs >= 1e6) return sign + "$" + (abs / 1e6).toFixed(1) + "M";
+      if (abs >= 1e3) return sign + "$" + (abs / 1e3).toFixed(0) + "K";
+      return sign + "$" + Math.round(abs);
+    }
+    function fmtInt(v) { return Math.round(v || 0).toLocaleString("en-AU"); }
+    function escapeHtml(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
     }
 
-    // ---- SVG line chart helper ----
-    // series: [{ name, color, points: [{x: index, y: number|null}] }]
-    // xLabels: array of strings, one per x index
-    function renderLineChart(series, xLabels, opts) {
+    function deltaHtml(pct) {
+      if (pct == null || !isFinite(pct)) return "";
+      var cls = pct >= 0 ? "up" : "down";
+      var arrow = pct >= 0 ? "▲" : "▼";
+      return '<div class="delta ' + cls + '">' + Math.abs(pct).toFixed(1) + "%" + arrow + " vs LY</div>";
+    }
+
+    function kpiCard(label, valueHtml, deltaPct, primary) {
+      return '<div class="kpi-card' + (primary ? " kpi-card--primary" : "") + '">' +
+        '<div class="label">' + label + "</div>" +
+        '<div class="value">' + valueHtml + "</div>" +
+        deltaHtml(deltaPct) +
+        "</div>";
+    }
+
+    // ---- Fiscal year helpers (AU-style FY: Jul-Jun, labelled by the year it ends in) ----
+    function fyStartYear(d) { return d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1; }
+    function fyLabel(startYear) { return "FY" + String((startYear + 1) % 100).padStart(2, "0"); }
+    function fyMonths(startYear) {
+      var months = [];
+      for (var i = 0; i < 12; i++) months.push(new Date(startYear, 6 + i, 1));
+      return months;
+    }
+    function monthKey(d) { return d.getFullYear() * 12 + d.getMonth(); }
+
+    // Any Deal_Stage value containing "won"/"lost" is classified as such; everything
+    // else (Discovery, Proposal, etc.) is treated as still-open pipeline. This avoids
+    // hardcoding the CRM's exact stage names, which vary and weren't confirmed.
+    function stageBucket(stage) {
+      var s = String(stage || "").toLowerCase();
+      if (s.indexOf("won") !== -1) return "won";
+      if (s.indexOf("lost") !== -1) return "lost";
+      return "open";
+    }
+
+    // ---- SVG chart helpers ----
+    function chartFrame(n, opts) {
       opts = opts || {};
-      var W = 760, H = 260, padL = 46, padR = 16, padT = 16, padB = 30;
-      var plotW = W - padL - padR, plotH = H - padT - padB;
+      var W = 360, H = 220, padL = 44, padR = 12, padT = 12, padB = 26;
+      return { W: W, H: H, padL: padL, padR: padR, padT: padT, padB: padB, plotW: W - padL - padR, plotH: H - padT - padB, n: n };
+    }
 
-      var allY = [];
-      series.forEach(function (s) {
-        s.points.forEach(function (p) { if (p.y != null) allY.push(p.y); });
-      });
-      var yMin = opts.yMin != null ? opts.yMin : Math.min.apply(null, allY);
-      var yMax = opts.yMax != null ? opts.yMax : Math.max.apply(null, allY);
-      if (yMin === yMax) { yMin -= 1; yMax += 1; }
-      var yPad = (yMax - yMin) * 0.1;
-      yMin -= yPad; yMax += yPad;
-      if (opts.yMin === 0 && yMin < 0) yMin = 0;
-
-      var n = xLabels.length;
-      function xScale(i) { return padL + (n <= 1 ? 0 : (i / (n - 1)) * plotW); }
-      function yScale(v) { return padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH; }
-
-      var gridCount = 4;
-      var gridlines = "";
-      var yLabels = "";
+    function gridAndAxes(f, yMin, yMax, yFmt, xLabels) {
+      function yScale(v) { return f.padT + f.plotH - ((v - yMin) / (yMax - yMin || 1)) * f.plotH; }
+      var gridCount = 4, gridlines = "", yLabels = "";
       for (var g = 0; g <= gridCount; g++) {
         var val = yMin + (g / gridCount) * (yMax - yMin);
         var y = yScale(val);
-        gridlines += '<line class="gridline" x1="' + padL + '" x2="' + (W - padR) + '" y1="' + y + '" y2="' + y + '"/>';
-        yLabels += '<text class="axis-label" x="' + (padL - 8) + '" y="' + (y + 3) + '" text-anchor="end">' +
-          (opts.yFmt ? opts.yFmt(val) : Math.round(val)) + '</text>';
+        gridlines += '<line class="gridline" x1="' + f.padL + '" x2="' + (f.W - f.padR) + '" y1="' + y + '" y2="' + y + '"/>';
+        yLabels += '<text class="axis-label" x="' + (f.padL - 6) + '" y="' + (y + 3) + '" text-anchor="end">' + yFmt(val) + '</text>';
       }
-
-      var xTickEvery = Math.max(1, Math.round(n / 8));
+      var xTickEvery = Math.max(1, Math.round(f.n / 6));
       var xLabelsSvg = "";
       xLabels.forEach(function (lbl, i) {
-        if (i % xTickEvery !== 0 && i !== n - 1) return;
-        xLabelsSvg += '<text class="axis-label" x="' + xScale(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + lbl + '</text>';
+        if (i % xTickEvery !== 0 && i !== f.n - 1) return;
+        var x = f.padL + (f.n <= 1 ? 0 : (i / (f.n - 1)) * f.plotW) + (f.barCenter || 0);
+        xLabelsSvg += '<text class="axis-label" x="' + x + '" y="' + (f.H - 6) + '" text-anchor="middle">' + escapeHtml(lbl) + '</text>';
       });
+      return { yScale: yScale, gridlines: gridlines, yLabels: yLabels, xLabelsSvg: xLabelsSvg };
+    }
 
-      var paths = series.map(function (s) {
-        var segs = [], cur = [];
-        s.points.forEach(function (p) {
-          if (p.y == null) {
-            if (cur.length) { segs.push(cur); cur = []; }
-          } else {
-            cur.push([xScale(p.x), yScale(p.y)]);
-          }
-        });
-        if (cur.length) segs.push(cur);
-        var d = segs.map(function (seg) {
-          return "M" + seg.map(function (pt) { return pt[0].toFixed(1) + "," + pt[1].toFixed(1); }).join("L");
-        }).join(" ");
-        return '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="2"/>';
+    // values/targets: arrays aligned to xLabels. targets entries may be null.
+    function renderBarWithTarget(values, targets, xLabels, opts) {
+      opts = opts || {};
+      var f = chartFrame(xLabels.length);
+      var allVals = values.concat(targets).filter(function (v) { return v != null; });
+      var yMax = (opts.yMax != null ? opts.yMax : Math.max.apply(null, allVals.length ? allVals : [1])) * 1.15;
+      var axes = gridAndAxes(f, 0, yMax, opts.yFmt || function (v) { return Math.round(v); }, xLabels);
+      var bw = f.plotW / f.n, barW = bw * 0.55;
+      var bars = "";
+      values.forEach(function (v, i) {
+        if (v == null) return;
+        var x = f.padL + i * bw + (bw - barW) / 2;
+        var y = axes.yScale(v);
+        bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) +
+          '" height="' + (f.padT + f.plotH - y).toFixed(1) + '" fill="' + (opts.barColor || "#bfe0cd") + '" rx="1"/>';
+      });
+      var markers = "";
+      targets.forEach(function (t, i) {
+        if (t == null) return;
+        var x = f.padL + i * bw + (bw - barW) / 2;
+        var y = axes.yScale(t);
+        markers += '<line x1="' + x.toFixed(1) + '" x2="' + (x + barW).toFixed(1) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) +
+          '" stroke="#14201c" stroke-width="3"/>';
+      });
+      return '<svg class="chart" viewBox="0 0 ' + f.W + ' ' + f.H + '">' +
+        axes.gridlines + axes.yLabels + axes.xLabelsSvg + bars + markers + "</svg>";
+    }
+
+    function renderBarChart(values, xLabels, opts) {
+      opts = opts || {};
+      var f = chartFrame(xLabels.length);
+      var allVals = values.filter(function (v) { return v != null; });
+      var yMax = (opts.yMax != null ? opts.yMax : Math.max.apply(null, allVals.length ? allVals : [1])) * 1.15;
+      var axes = gridAndAxes(f, 0, yMax, opts.yFmt || function (v) { return Math.round(v); }, xLabels);
+      var bw = f.plotW / f.n, barW = bw * 0.55;
+      var bars = "";
+      values.forEach(function (v, i) {
+        if (v == null) return;
+        var x = f.padL + i * bw + (bw - barW) / 2;
+        var y = axes.yScale(v);
+        bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) +
+          '" height="' + (f.padT + f.plotH - y).toFixed(1) + '" fill="' + (opts.barColor || "#9aa8a2") + '" rx="1"/>';
+      });
+      return '<svg class="chart" viewBox="0 0 ' + f.W + ' ' + f.H + '">' +
+        axes.gridlines + axes.yLabels + axes.xLabelsSvg + bars + "</svg>";
+    }
+
+    function renderHBarChart(items) {
+      var rowH = 20, gap = 8, labelW = 160, padR = 44, W = 360;
+      var maxVal = Math.max.apply(null, items.map(function (it) { return it.value; }).concat([1]));
+      var plotW = W - labelW - padR;
+      var H = items.length * (rowH + gap) + 10;
+      var rows = items.map(function (it, i) {
+        var y = 6 + i * (rowH + gap);
+        var w = maxVal > 0 ? (it.value / maxVal) * plotW : 0;
+        return '<text class="axis-label" x="' + (labelW - 8) + '" y="' + (y + rowH * 0.7) + '" text-anchor="end">' +
+          escapeHtml(it.label) + '</text>' +
+          '<rect x="' + labelW + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + rowH + '" rx="2" fill="#8fc7a8"/>';
       }).join("");
-
-      return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '">' +
-        gridlines + yLabels + xLabelsSvg + paths +
-        '</svg>';
+      return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '">' + rows + "</svg>";
     }
 
-    function legendHtml(series) {
-      return '<div class="legend">' + series.map(function (s) {
-        return '<span class="legend-item"><span class="legend-swatch" style="background:' + s.color + '"></span>' + s.name + '</span>';
-      }).join("") + '</div>';
+    // ---- App state ----
+    var RAW = { revenue: [], industry: [], deals: [] };
+
+    function parseRevenueRows(rows) {
+      return rows.map(function (r) {
+        return {
+          month: parseDate(r["data_revenue_target[month_date]"]),
+          entity: r["data_revenue_target[entity]"],
+          revenue: r["[Revenue]"],
+          target: r["[RevenueTarget]"],
+        };
+      }).filter(function (r) { return r.month; });
+    }
+    function parseIndustryRows(rows) {
+      return rows.map(function (r) {
+        return {
+          month: parseDate(r["data_powerbi_unified_fact[month_date]"]),
+          entity: r["data_powerbi_unified_fact[entity]"],
+          industry: r["data_powerbi_unified_fact[client_industry]"] || "Unspecified",
+          revenue: r["[TotalRevenue]"] || 0,
+        };
+      }).filter(function (r) { return r.month; });
+    }
+    function parseDealRows(rows) {
+      return rows.map(function (r) {
+        var closeDate = parseDate(r["[CloseDate]"]);
+        return {
+          company: r["[Company]"],
+          entity: r["[OmniaCompany]"],
+          stage: r["[DealStage]"],
+          bucket: stageBucket(r["[DealStage]"]),
+          closeDate: closeDate,
+          amount: r["[Amount]"] || 0,
+        };
+      }).filter(function (r) { return r.closeDate; });
     }
 
-    // ---- Render ----
-    function renderReport(trendRows, entityRows) {
-      var trend = trendRows.map(function (r) {
-        return {
-          month: parseMonth(r["data_utilisation[month]"]),
-          avgUtil: r["[AvgUtilisation]"],
-          totalFte: r["[TotalFTE]"],
-          totalBilled: r["[TotalBilled]"],
-        };
-      }).filter(function (r) { return r.month; });
+    function matches(value, selected) {
+      return selected === "All" || String(value) === selected;
+    }
 
-      var entity = entityRows.map(function (r) {
-        return {
-          month: parseMonth(r["data_utilisation[month]"]),
-          company: r["data_utilisation[Omnia_Company]"],
-          avgUtil: r["[AvgUtilisation]"],
-          totalFte: r["[TotalFTE]"],
-        };
-      }).filter(function (r) { return r.month; });
+    function computeFYOptions() {
+      var years = {};
+      RAW.revenue.forEach(function (r) { years[fyStartYear(r.month)] = true; });
+      RAW.deals.forEach(function (r) { years[fyStartYear(r.closeDate)] = true; });
+      return Object.keys(years).map(Number).sort(function (a, b) { return a - b; });
+    }
+    function computeEntityOptions() {
+      var set = {};
+      RAW.revenue.forEach(function (r) { if (r.entity) set[r.entity] = true; });
+      RAW.industry.forEach(function (r) { if (r.entity) set[r.entity] = true; });
+      return Object.keys(set).sort();
+    }
+    function latestRevenueMonth() {
+      var months = RAW.revenue.filter(function (r) { return r.revenue != null; }).map(function (r) { return r.month; });
+      if (!months.length) return new Date();
+      return new Date(Math.max.apply(null, months));
+    }
 
-      var xLabels = trend.map(function (r) { return monthLabel(r.month); });
+    function populateFilters() {
+      var fySel = document.getElementById("fy-select");
+      var opcoSel = document.getElementById("opco-select");
+      var fyYears = computeFYOptions();
+      fySel.innerHTML = fyYears.map(function (y) { return '<option value="' + y + '">' + fyLabel(y) + '</option>'; }).join("");
+      var entities = computeEntityOptions();
+      opcoSel.innerHTML = '<option value="All">All OpCos</option>' +
+        entities.map(function (e) { return '<option value="' + escapeHtml(e) + '">' + escapeHtml(e) + '</option>'; }).join("");
+      var defaultYear = fyStartYear(latestRevenueMonth());
+      fySel.value = fyYears.indexOf(defaultYear) !== -1 ? String(defaultYear) : String(fyYears[fyYears.length - 1]);
+      opcoSel.value = "All";
+      fySel.disabled = false;
+      opcoSel.disabled = false;
+      fySel.addEventListener("change", renderAll);
+      opcoSel.addEventListener("change", renderAll);
+    }
 
-      // KPI cards: latest month vs previous
-      var last = trend[trend.length - 1];
-      var prev = trend[trend.length - 2];
-      function delta(cur, prevV) {
-        if (prevV == null || prevV === 0) return "";
-        var d = cur - prevV;
-        var sign = d >= 0 ? "up" : "down";
-        var arrow = d >= 0 ? "▲" : "▼";
-        return '<div class="delta ' + sign + '">' + arrow + ' ' + Math.abs(d).toFixed(1) + ' vs prior month</div>';
-      }
+    function monthsElapsedInFY(startYear, latestMonth) {
+      var fyStart = new Date(startYear, 6, 1);
+      var fyEnd = new Date(startYear + 1, 5, 1);
+      if (latestMonth < fyStart) return 0;
+      var capped = latestMonth > fyEnd ? fyEnd : latestMonth;
+      return Math.round((capped.getFullYear() * 12 + capped.getMonth()) - (fyStart.getFullYear() * 12 + fyStart.getMonth())) + 1;
+    }
 
+    function sumRevenueWindow(startYear, opco, monthLimit) {
+      var months = fyMonths(startYear).slice(0, monthLimit);
+      var keys = {}; months.forEach(function (d) { keys[monthKey(d)] = true; });
+      var total = 0;
+      RAW.revenue.forEach(function (r) {
+        if (matches(r.entity, opco) && keys[monthKey(r.month)] && r.revenue != null) total += r.revenue;
+      });
+      return total;
+    }
+
+    function renderAll() {
+      var fySel = document.getElementById("fy-select");
+      var opcoSel = document.getElementById("opco-select");
+      var startYear = Number(fySel.value);
+      var opco = opcoSel.value;
+      var months = fyMonths(startYear);
+      var xLabels = months.map(monthLabel);
+      var latestMonth = latestRevenueMonth();
+      var elapsed = monthsElapsedInFY(startYear, latestMonth);
+
+      // --- Revenue vs target chart ---
+      var revByMonth = {};
+      RAW.revenue.forEach(function (r) {
+        if (matches(r.entity, opco)) {
+          var k = monthKey(r.month);
+          if (!revByMonth[k]) revByMonth[k] = { revenue: 0, target: 0 };
+          revByMonth[k].revenue += r.revenue || 0;
+          revByMonth[k].target += r.target || 0;
+        }
+      });
+      var revValues = months.map(function (d) { var e = revByMonth[monthKey(d)]; return e ? e.revenue : null; });
+      var targetValues = months.map(function (d) { var e = revByMonth[monthKey(d)]; return e ? e.target : null; });
+
+      // --- Client industry chart (whole selected FY) ---
+      var fyKeys = {}; months.forEach(function (d) { fyKeys[monthKey(d)] = true; });
+      var industryTotals = {};
+      RAW.industry.forEach(function (r) {
+        if (matches(r.entity, opco) && fyKeys[monthKey(r.month)]) {
+          industryTotals[r.industry] = (industryTotals[r.industry] || 0) + r.revenue;
+        }
+      });
+      var industryItems = Object.keys(industryTotals).map(function (k) { return { label: k, value: industryTotals[k] }; })
+        .sort(function (a, b) { return b.value - a.value; }).slice(0, 10);
+
+      // --- Deals: pipeline (open, from this FY onward) & sales intake (won, within FY months) ---
+      var fyStartDate = new Date(startYear, 6, 1);
+      var dealsInScope = RAW.deals.filter(function (d) { return matches(d.entity, opco); });
+
+      var pipelineByMonth = {};
+      dealsInScope.forEach(function (d) {
+        if (d.bucket === "open" && d.closeDate >= fyStartDate) {
+          var k = monthKey(d.closeDate);
+          pipelineByMonth[k] = (pipelineByMonth[k] || 0) + d.amount;
+        }
+      });
+      var pipelineMonths = Object.keys(pipelineByMonth).map(Number).sort(function (a, b) { return a - b; });
+      var pipelineLabels = pipelineMonths.map(function (k) { return monthLabel(new Date(Math.floor(k / 12), k % 12, 1)); });
+      var pipelineValues = pipelineMonths.map(function (k) { return pipelineByMonth[k]; });
+
+      var intakeByMonth = {};
+      dealsInScope.forEach(function (d) {
+        if (d.bucket === "won" && fyKeys[monthKey(d.closeDate)]) {
+          var k = monthKey(d.closeDate);
+          intakeByMonth[k] = (intakeByMonth[k] || 0) + d.amount;
+        }
+      });
+      var intakeValues = months.map(function (d) { return intakeByMonth[monthKey(d)] || 0; });
+
+      // --- KPI: YTD window = FY start through latest completed month ---
+      var ytdStart = fyStartDate;
+      var ytdEnd = new Date(startYear, 6 + elapsed - 1, 1);
+      var wonYTD = dealsInScope.filter(function (d) {
+        return d.bucket === "won" && d.closeDate >= ytdStart && d.closeDate <= ytdEnd;
+      });
+      var totalWonYTD = wonYTD.reduce(function (s, d) { return s + d.amount; }, 0);
+      var engagementCountYTD = wonYTD.length;
+      var avgWonDealSizeYTD = wonYTD.length ? totalWonYTD / wonYTD.length : 0;
+
+      // "New client" = a company whose earliest-ever won deal (within this OpCo scope)
+      // falls inside the current YTD window. Best-effort definition — adjust if you
+      // track new-logo status differently.
+      var firstWinByCompany = {};
+      dealsInScope.forEach(function (d) {
+        if (d.bucket === "won") {
+          if (!firstWinByCompany[d.company] || d.closeDate < firstWinByCompany[d.company]) {
+            firstWinByCompany[d.company] = d.closeDate;
+          }
+        }
+      });
+      var newClientCompanies = {};
+      wonYTD.forEach(function (d) {
+        var first = firstWinByCompany[d.company];
+        if (first && first >= ytdStart && first <= ytdEnd) newClientCompanies[d.company] = true;
+      });
+      var newClientsYTD = Object.keys(newClientCompanies).length;
+
+      var totalRevenueYTD = sumRevenueWindow(startYear, opco, elapsed);
+      var totalRevenueLYYTD = sumRevenueWindow(startYear - 1, opco, elapsed);
+      var revenueGrowthPct = totalRevenueLYYTD ? ((totalRevenueYTD - totalRevenueLYYTD) / totalRevenueLYYTD) * 100 : null;
+
+      // --- Render ---
       var kpiHtml =
-        '<div class="kpi-row">' +
-          '<div class="kpi-card"><div class="label">Avg utilisation</div><div class="value">' + fmtPct(last.avgUtil) + '</div>' +
-            (prev ? delta(last.avgUtil, prev.avgUtil) : '') +
-            '<div class="sub">' + monthLabel(last.month) + '</div></div>' +
-          '<div class="kpi-card"><div class="label">Total FTE</div><div class="value">' + fmtNum(last.totalFte) + '</div>' +
-            (prev ? delta(last.totalFte, prev.totalFte) : '') +
-            '<div class="sub">' + monthLabel(last.month) + '</div></div>' +
-          '<div class="kpi-card"><div class="label">Total billed</div><div class="value">' + fmtMoney(last.totalBilled) + '</div>' +
-            (prev ? delta(last.totalBilled, prev.totalBilled) : '') +
-            '<div class="sub">' + monthLabel(last.month) + '</div></div>' +
-        '</div>';
+        kpiCard("Total Revenue YTD", fmtMoneyAbbrev(totalRevenueYTD), revenueGrowthPct, true) +
+        kpiCard("Engagement Count YTD", fmtInt(engagementCountYTD), null) +
+        kpiCard("New Clients YTD", fmtInt(newClientsYTD), null) +
+        kpiCard("Avg. Won Deal Size YTD", fmtMoneyAbbrev(avgWonDealSizeYTD), null) +
+        kpiCard("Revenue Growth YTD", (revenueGrowthPct == null ? "—" : Math.round(revenueGrowthPct) + "%"), null);
 
-      var utilSeries = [{
-        name: "All entities",
-        color: "#14201c",
-        points: trend.map(function (r, i) { return { x: i, y: r.avgUtil }; }),
-      }];
-      var utilChartHtml =
-        '<div class="panel"><h2>Utilisation % — monthly trend</h2>' +
-        '<div class="panel-sub">Average utilisation across all billable staff, all entities</div>' +
-        renderLineChart(utilSeries, xLabels, { yFmt: function (v) { return Math.round(v) + "%"; } }) +
-        '</div>';
+      var revenuePanel =
+        '<div class="panel"><div class="panel-header">Revenue vs. Target by Month<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        renderBarWithTarget(revValues, targetValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#bfe0cd" }) +
+        '<div class="legend">' +
+        '<span class="legend-item"><span class="legend-swatch" style="background:#bfe0cd"></span>Revenue</span>' +
+        '<span class="legend-item"><span class="legend-dash" style="background:#14201c"></span>Revenue Target</span>' +
+        "</div></div></div>";
 
-      // Entity FTE chart — align each entity's series to the full month axis.
-      var entityByCompany = {};
-      entity.forEach(function (r) {
-        if (!entityByCompany[r.company]) entityByCompany[r.company] = {};
-        entityByCompany[r.company][r.month.getTime()] = r.totalFte;
-      });
-      var companies = ENTITY_ORDER.filter(function (c) { return entityByCompany[c]; });
-      var fteSeries = companies.map(function (c) {
-        return {
-          name: c,
-          color: ENTITY_COLORS[c] || "#888",
-          points: trend.map(function (r, i) {
-            var v = entityByCompany[c][r.month.getTime()];
-            return { x: i, y: v == null ? null : v };
-          }),
-        };
-      });
-      var fteChartHtml =
-        '<div class="panel"><h2>FTE by entity — monthly trend</h2>' +
-        '<div class="panel-sub">Billable full-time-equivalent headcount, per entity</div>' +
-        renderLineChart(fteSeries, xLabels, { yMin: 0 }) +
-        legendHtml(fteSeries) +
-        '</div>';
+      var pipelinePanel =
+        '<div class="panel"><div class="panel-header">Deals in Pipeline<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        '<div class="panel-note">*Includes all open deals from the current FY onwards.</div>' +
+        (pipelineMonths.length
+          ? renderBarChart(pipelineValues, pipelineLabels, { yFmt: fmtMoneyAbbrev, barColor: "#93a3ab" })
+          : '<div class="panel-note">No open pipeline in scope.</div>') +
+        "</div></div>";
 
-      document.getElementById("report").innerHTML = kpiHtml + utilChartHtml + fteChartHtml;
+      var industryPanel =
+        '<div class="panel"><div class="panel-header">Client Industry by Total Revenue<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        (industryItems.length ? renderHBarChart(industryItems) : '<div class="panel-note">No data in scope.</div>') +
+        "</div></div>";
+
+      var intakePanel =
+        '<div class="panel"><div class="panel-header">Sales Intake by Month<span class="chevron">▾</span></div>' +
+        '<div class="panel-body">' +
+        renderBarChart(intakeValues, xLabels, { yFmt: fmtMoneyAbbrev, barColor: "#93a3ab" }) +
+        "</div></div>";
+
+      document.getElementById("report").innerHTML =
+        '<div class="kpi-sidebar">' + kpiHtml + "</div>" +
+        '<div class="panels-grid">' + revenuePanel + pipelinePanel + industryPanel + intakePanel + "</div>";
+
+      var earliestMonth = RAW.revenue.reduce(function (min, r) { return (!min || r.month < min) ? r.month : min; }, null);
+      document.getElementById("footnote").textContent = earliestMonth
+        ? "Note: Data is available from " + monthLabel(earliestMonth) + " until the latest completed month (" + monthLabel(latestMonth) + ")."
+        : "";
     }
 
     async function loadReport(token) {
       document.getElementById("placeholder").classList.add("hidden");
       var report = document.getElementById("report");
       report.classList.add("visible");
-      report.innerHTML = '<div class="panel">Loading data from the semantic model…</div>';
-      var results = await executeDaxQueries(token, [Q_TREND, Q_ENTITY]);
-      renderReport(results[0], results[1]);
+      report.innerHTML = '<div class="panel"><div class="panel-body">Loading data from the semantic model…</div></div>';
+      var results = await executeDaxQueries(token, [Q_REVENUE_TARGET, Q_INDUSTRY, Q_DEALS]);
+      RAW.revenue = parseRevenueRows(results[0]);
+      RAW.industry = parseIndustryRows(results[1]);
+      RAW.deals = parseDealRows(results[2]);
+      populateFilters();
+      renderAll();
     }
 
     async function signIn() {
